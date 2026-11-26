@@ -1,96 +1,99 @@
 # ML Counter Assistant
 
-An expert system, written in **SWI-Prolog**, that helps *Mobile Legends: Bang Bang* players with
-**counter picking**, **drafting** and **counter building**, using a November 2026 meta snapshot.
+A program made in SWI-Prolog that helps Mobile Legends: Bang Bang players pick heroes and choose items when they are facing an enemy team. It was made for our IT 405 (Logic Programming) final project at Southern Leyte State University, San Juan Campus.
 
-> IT 405 – Logic Programming Final Group Project · Southern Leyte State University, San Juan Campus
+## What it is for
 
-## Purpose and features
+When you are in the draft phase of a Mobile Legends match, you have to decide fast which hero to pick and what to build. Our program helps with that. You tell it the enemy heroes, and it tells you which heroes counter them and what items you should build.
 
-Prolog makes every decision; the web page is only a front-end that asks Prolog questions.
+All the thinking is done in Prolog (the `.pl` files). The web page is only there to make it easier to use, and it just asks Prolog the questions and shows the answers. You can also use the program with only the Prolog console, no browser needed.
 
-| Feature | What Prolog does |
-|---|---|
-| **Counter Pick** | Finds heroes that counter one or more enemy heroes, from stored facts (`hard_counter/2`, `soft_counter/2`) **and** from rules over hero tags (e.g. an *anti-dash* hero counters a *dash* hero). Scores and ranks the results. |
-| **Draft Board** | Detects missing roles in your team, checks damage-type balance and synergies, and ranks the best pick per role by counter value + team fit + meta tier. |
-| **Counter Build** | Chooses boots, defence, anti-heal and core items from the enemy team's damage mix, crowd control, sustain and burst. |
-| **Meta analysis** | Tier list and ban priority derived from a consensus of two November 2026 tier lists. |
-| **Hero database** | 133 heroes with roles, damage type, lanes, tags and a counter explanation (`why_counter/2`). |
+## Features
 
-Intended users: Mobile Legends players, especially during the draft/ban phase.
+- Counter Pick - type in one to five enemy heroes and it gives you the best heroes to counter them, ranked by score. It uses saved facts (like Khufra counters Fanny) and also rules based on hero tags (like an anti-dash hero counters a dash hero).
+- Draft Board - checks your team for missing roles and damage balance, then suggests the best pick for each role.
+- Counter Build - picks boots, defense items, anti-heal and the main items based on the enemy team (how much physical or magic damage, how much crowd control, if they have healing or burst).
+- Meta - a tier list and ban suggestions for the current season (November 2026).
+- Hero database - 133 heroes and 54 items, plus `why_counter/2` which explains why one hero counters another.
 
-## Technology stack
+## What we used
 
-- **SWI-Prolog 9+** (knowledge base, rules, reasoning) – required
-- SWI-Prolog `library(http/*)` for the small JSON web server (`server.pl`)
-- HTML / CSS / vanilla JavaScript front-end (optional, in `src/frontend/`)
-- `plunit` for automated tests
+- SWI-Prolog 9 or newer (the main part of the project)
+- SWI-Prolog's built-in HTTP library, for the small web server
+- HTML, CSS and JavaScript for the web page (optional)
+- plunit, for the automated tests
 
-## Repository structure
+## Folder structure
 
 ```
 ml-counter-assistant/
   README.md
   src/
-    prolog/            # knowledge base, rules, queries
-      heroes.pl        #   133 heroes + tags (knowledge representation)
-      items.pl         #   54 items
-      counters.pl      #   counter facts + tag-based counter rules + scoring
-      builds.pl        #   counter-build reasoning
-      meta.pl          #   team composition, drafting, ban/tier logic
-      season.pl        #   Nov 2026 meta snapshot (tiers, bans)
-      main.pl          #   console menu (run this for the Prolog-only version)
-      api.pl           #   JSON-ready views of the predicates above
-      server.pl        #   HTTP server for the web front-end
-    frontend/          # optional web interface
-      index.html
-      img/             #   hero portraits, thumbnails, item icons
-  tests/tests.pl       # automated plunit tests
-  docs/Project_Documentation.pdf
+    prolog/          all the Prolog files
+      heroes.pl      heroes and their tags
+      items.pl       items
+      counters.pl    counter facts, counter rules and scoring
+      builds.pl      item build logic
+      meta.pl        team checks, drafting, tier list and bans
+      season.pl      the November 2026 tier and ban data
+      main.pl        console menu (run this for the Prolog-only version)
+      api.pl         turns the Prolog answers into data for the web page
+      server.pl      the web server
+    frontend/        the web page and the images
+  tests/tests.pl     automated tests
+  docs/              project documentation (PDF)
 ```
 
-## Installation and launch
+## How to run it
 
-1. Install SWI-Prolog 9 or newer from <https://www.swi-prolog.org/Download.html>.
-2. Clone this repository: `git clone <repository-url>` and `cd ml-counter-assistant`.
+First, install SWI-Prolog from https://www.swi-prolog.org/Download.html and then get the project:
 
-**A. Prolog console (no browser needed)**
+```
+git clone https://github.com/jewekyut/ml-counter-assistant.git
+cd ml-counter-assistant
+```
+
+Option 1: Prolog console
 
 ```
 swipl src/prolog/main.pl
-?- start.
 ```
 
-Type a menu number and press Enter. You can also query directly (see below).
+Then type `start.` at the prompt. A menu will show up. Type a number and press Enter.
 
-**B. Web interface**
+Option 2: Web page
 
 ```
 swipl src/prolog/server.pl
 ```
 
-Open <http://localhost:8080/>. Stop it with `?- stop_server.`
+Then open http://localhost:8080/ in your browser. To stop the server, type `stop_server.` in the Prolog window.
 
-> On Windows you can also open SWI-Prolog and run
-> `?- consult('src/prolog/server.pl').`
+If you are on Windows and prefer the SWI-Prolog window, open it and type:
+`consult('src/prolog/server.pl').`
 
-**C. Run the tests**
+-Run the tests-
 
 ```
 swipl -g run_tests -t halt tests/tests.pl
 ```
 
-## Sample Prolog queries (with expected output)
+All the tests should pass.
 
-Load first: `swipl src/prolog/main.pl`
+## Sample queries
+
+Start with `swipl src/prolog/main.pl` and then try these:
 
 ```prolog
 ?- hard_counter(khufra, fanny).
 true.
 
-?- counters(phoveus, julian).          % not a stored fact: inferred from tags
+?- counters(phoveus, julian).
 true.
+```
+This one is not a saved fact. Prolog works it out from the hero tags.
 
+```prolog
 ?- get_counter_picks(fanny, Picks).
 Picks = [counter(khufra,hard), counter(franco,hard), counter(vale,soft), counter(akai,soft)].
 
@@ -107,30 +110,31 @@ Build = [tough_boots, demon_hunter_sword, golden_staff, great_dragon_spear, domi
   Why Karrie counters Gloo:
     ★ HARD COUNTER
     Reason: Gloo is weak to true damage and percent-HP damage, which Karrie delivers
+```
 
-?- hero(nobody).                       % invalid input
+These two show what happens when the input is wrong or nothing matches:
+
+```prolog
+?- hero(nobody).
 false.
 
-?- counters(khufra, khufra).           % unsuccessful case
+?- counters(khufra, khufra).
 false.
 ```
 
-Other useful entry points: `counter_pick_analysis/1`, `build_analysis/2`, `draft_helper/2`,
-`tier_list/0`, `ban_recommendations/0`, `team_comp_check/1`, `hero_info/1`.
+Other things you can try: `counter_pick_analysis/1`, `build_analysis/2`, `draft_helper/2`, `tier_list/0`, `ban_recommendations/0`, `team_comp_check/1` and `hero_info/1`.
 
 ## Group members
 
-| Member | Responsibility |
-|---|---|
-| _Name 1_ | _e.g. knowledge base (`heroes.pl`, `items.pl`)_ |
-| _Name 2_ | _e.g. counter reasoning (`counters.pl`)_ |
-| _Name 3_ | _e.g. build and meta logic (`builds.pl`, `meta.pl`)_ |
-| _Name 4_ | _e.g. web front-end and server (`api.pl`, `server.pl`, `index.html`)_ |
-| _Name 5_ | _e.g. testing and documentation_ |
+| Humphrey M. Basas 
+| Jeruel L. Malubay
+| John Rico G. Paciencia
+| Jonathan P. Ouano 
+| Kim Benedict Braga
+| Joemar Ermita
 
-## Credits and notes
+## Notes
 
-- Meta data: consensus of the esports.gg and PocketGamer MLBB tier lists (November 2026).
-- Hero and item artwork belongs to Moonton; it is used here for non-commercial, educational purposes only.
-- Libraries: SWI-Prolog (BSD-2-Clause), plunit, SWI-Prolog HTTP libraries.
-- See `docs/Project_Documentation.pdf` for the full report, including AI-assistance disclosure.
+- The tier list and ban data come from two November 2026 tier lists (esports.gg and PocketGamer). We combined them into one score.
+- The hero and item pictures belong to Moonton. We only use them for this school project.
+- The full report is in `docs/Project_Documentation.pdf`. It also says which parts we got AI help with.
