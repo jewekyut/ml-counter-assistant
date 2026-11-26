@@ -1,0 +1,12 @@
+# OS / editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.vscode/
+.idea/
+
+# SWI-Prolog
+*.qlf
+*.pl~
+.swipl*
