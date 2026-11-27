@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Assistant – Counter Pick, Draft &amp; Build</title>
+<style>
+:root{--bg:#f4f5fa;--card:#fff;--text:#1b1f2a;--muted:#667085;--line:#e3e6ef;--accent:#4f46e5;--accent-t:#fff;--hard:#dc2626;--soft:#d97706;--tag:#2563eb;--ok:#16a34a;--sp:#f59e0b}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1120;--card:#171b2d;--text:#e8eaf3;--muted:#98a0b8;--line:#2a2f47;--accent:#818cf8;--accent-t:#0e1120;--hard:#f87171;--soft:#fbbf24;--tag:#60a5fa;--ok:#4ade80;--sp:#fbbf24}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{padding:18px 16px 0;max-width:1150px;margin:auto}
+h1{margin:0;font-size:22px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.badge{font-size:12px;font-weight:600;background:color-mix(in srgb,var(--sp) 18%,transparent);color:var(--sp);border:1px solid var(--sp);border-radius:999px;padding:2px 10px}
+.sub{color:var(--muted);font-size:13px}
+nav{display:flex;gap:6px;overflow-x:auto;padding:14px 0 0}
+nav button{border:1px solid var(--line);background:var(--card);color:var(--text);padding:8px 14px;border-radius:999px;cursor:pointer;white-space:nowrap;font:inherit;transition:.15s}
+nav button:hover{border-color:var(--accent)}
+nav button.on{background:var(--accent);color:var(--accent-t);border-color:var(--accent)}
+main{max-width:1150px;margin:auto;padding:14px 16px 40px}
+footer{max-width:1150px;margin:auto;padding:0 16px 30px;color:var(--muted);font-size:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;animation:in .25s ease}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+h2{font-size:16px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.muted{color:var(--muted)}.err{color:var(--hard)}
+label{display:block;font-size:13px;color:var(--muted);margin:0 0 4px}
+.picker{border:1px solid var(--line);border-radius:12px;padding:6px;display:flex;flex-wrap:wrap;gap:6px;background:var(--bg);align-items:center}
+.picker input{flex:1;min-width:130px;border:0;outline:0;background:transparent;color:var(--text);font:inherit;padding:4px}
+.chips{display:contents}
+.chip{background:var(--accent);color:var(--accent-t);border-radius:999px;padding:2px 6px 2px 2px;display:inline-flex;align-items:center;gap:6px;font-size:14px}
+.chip button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
+.ghost{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;padding:4px 10px;cursor:pointer;font:inherit;font-size:13px}
+.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.draft-action{margin-top:10px;border:1px solid transparent;border-radius:5px;padding:9px 13px;cursor:pointer;font:inherit;font-size:14px;font-weight:700;transition:.15s;width:100%}
+.draft-action-green{background:#dcfce7;color:#166534;border-color:#86efac}
+.draft-action-green:hover{background:#bbf7d0;border-color:#4ade80}
+.draft-action-red{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+.draft-action-red:hover{background:#fecaca;border-color:#f87171}
+@media(prefers-color-scheme:dark){
+ .draft-action-green{background:#173b2a;color:#bbf7d0;border-color:#28734a}
+ .draft-action-green:hover{background:#205238}
+ .draft-action-red{background:#48232b;color:#fecaca;border-color:#85404a}
+ .draft-action-red:hover{background:#622832}
+}
+
+.row{display:grid;gap:14px;grid-template-columns:1fr 1fr}
+@media(max-width:760px){.row{grid-template-columns:1fr}}
+.av{--s:40px;width:var(--s);height:var(--s);border-radius:50%;overflow:hidden;display:inline-grid;place-items:center;color:#fff;font-weight:700;font-size:calc(var(--s)*.42);position:relative;flex:none;background:hsl(var(--h) 45% 42%)}
+.av.sq{border-radius:10px}
+.portrait{float:right;width:130px;border-radius:12px;margin:0 0 8px 12px;box-shadow:0 4px 14px rgba(0,0,0,.35)}@media(max-width:520px){.portrait{width:90px}}
+.av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);margin:0 4px 4px 0}
+.hard{color:var(--hard);border-color:var(--hard)}.soft{color:var(--soft);border-color:var(--soft)}.tag_based{color:var(--tag);border-color:var(--tag)}
+/* MLBB meta tier colors */
+.t-s_plus{background:#fef3c7;color:#92400e;border-color:#f59e0b;font-weight:800}
+.t-s{background:#f3e8ff;color:#6b21a8;border-color:#a855f7;font-weight:700}
+.t-a{background:#dbeafe;color:#1e40af;border-color:#3b82f6;font-weight:700}
+.t-b{background:#dcfce7;color:#166534;border-color:#22c55e;font-weight:700}
+.t-c{background:#e5e7eb;color:#374151;border-color:#9ca3af;font-weight:700}
+@media(prefers-color-scheme:dark){
+  .t-s_plus{background:#513b12;color:#fde68a;border-color:#d6a32b}
+  .t-s{background:#3b2056;color:#e9d5ff;border-color:#a855f7}
+  .t-a{background:#1e3a5f;color:#bfdbfe;border-color:#60a5fa}
+  .t-b{background:#16452c;color:#bbf7d0;border-color:#4ade80}
+  .t-c{background:#343946;color:#e5e7eb;border-color:#6b7280}
+}
+.warn{background:color-mix(in srgb,var(--soft) 14%,transparent);border-left:3px solid var(--soft);padding:6px 10px;border-radius:6px;margin:6px 0;font-size:14px}
+.good{background:color-mix(in srgb,var(--ok) 14%,transparent);border-left-color:var(--ok)}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.stat{background:var(--bg);border-radius:10px;padding:6px 12px;font-size:13px}.stat b{font-size:18px;display:block}
+.rec{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}.rec:last-child{border:0}
+.bar{height:6px;border-radius:3px;background:var(--accent);min-width:4px;transition:width .4s}
+.hl{color:var(--accent);text-decoration:none;font-weight:600;cursor:pointer}.hl:hover{text-decoration:underline}
+.counter{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}.counter:first-of-type{border-top:0}
+.item{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}.item:first-child{border-top:0}
+.num{background:var(--accent);color:var(--accent-t);width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;flex:none}
+.hero{cursor:pointer;display:flex;gap:12px;align-items:center;margin:0;transition:.15s}.hero:hover{border-color:var(--accent);transform:translateY(-2px)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.filters input,.filters select{padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit}
+.chipbtn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:4px 12px;cursor:pointer;font:inherit;font-size:13px}
+.chipbtn.on{background:var(--accent);color:var(--accent-t);border-color:var(--accent)}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.tiles{display:flex;flex-wrap:wrap;gap:8px}
+.tile{display:flex;flex-direction:column;align-items:center;gap:3px;width:76px;text-align:center;cursor:pointer;font-size:12px;padding:6px 2px;border-radius:10px;border:1px solid transparent;position:relative;transition:.12s}
+.tile:hover{border-color:var(--accent);background:var(--bg)}
+.tile.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,transparent)}
+.tile.dis{opacity:.35;pointer-events:none}
+.tile .sc{position:absolute;top:2px;right:6px;font-size:11px;background:var(--accent);color:var(--accent-t);border-radius:999px;padding:0 6px}
+.tilegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:6px;max-height:55vh;overflow:auto;padding:4px}
+dialog{max-width:640px;width:94%;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--text);padding:16px}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+.x{float:right;border:0;background:transparent;color:var(--text);font-size:24px;cursor:pointer;line-height:1}
+section{display:none}section.on{display:block}
+.rolehead{display:flex;align-items:center;gap:8px;margin:10px 0 4px;font-weight:600}
+.ok{color:var(--ok)}.need{color:var(--soft)}
+/* start screen (3 rounded panels) */
+.panel{background:var(--card);border:1.5px solid var(--line);border-radius:26px;padding:14px 18px 18px;margin-bottom:14px;animation:in .25s ease}
+.ptag{display:inline-block;border:1.5px solid var(--text);border-radius:999px;padding:1px 16px;font-weight:700;font-size:13px;margin:0 10px 10px 0}
+.circles{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px 14px}
+.circles .gap{width:26px}
+.circ{width:86px;text-align:center;cursor:pointer;font-size:12px;border:0;background:none;color:inherit;padding:4px 0;font-family:inherit}
+.circ .av{box-shadow:0 2px 8px rgba(0,0,0,.25);transition:.15s;margin:3px 0 8px}
+.circ:hover .av{transform:translateY(-2px)}
+.circ.on .av{outline:3px solid var(--accent);outline-offset:3px}
+.circ small{display:block;color:var(--muted)}
+.detail{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
+.detail .big{width:150px;height:240px;border-radius:18px;object-fit:cover;object-position:top;box-shadow:0 4px 14px rgba(0,0,0,.35);flex:none}
+.detail .info{flex:1;min-width:230px;align-self:stretch}
+.why{padding:5px 0;border-top:1px solid var(--line);font-size:14px}
+
+
+/* Subtle, consistent corner rounding across the interface.
+   Hero portraits and avatar images retain their original shapes. */
+*:not(.av):not(.portrait):not(.big) { border-radius: 5px !important; }
+.av, .av img, .portrait, .detail .big { border-radius: revert; }
+
+
+/* Action button colors: build = green, enemy = soft red */
+button[data-build]{
+  background:#16a34a !important;
+  border-color:#16a34a !important;
+  color:#fff !important;
+  font-weight:600;
+}
+button[data-build]:hover{background:#15803d !important;border-color:#15803d !important}
+button[data-enemy]{
+  background:#fee2e2 !important;
+  border-color:#fca5a5 !important;
+  color:#991b1b !important;
+  font-weight:600;
+}
+button[data-enemy]:hover{background:#fecaca !important;border-color:#f87171 !important}
+@media(prefers-color-scheme:dark){
+  button[data-enemy]{background:#4c2028 !important;border-color:#85404a !important;color:#fecaca !important}
+  button[data-enemy]:hover{background:#622832 !important}
+}
+
+/* Readability, role grouping, and responsive layout improvements */
+body{font-size:16px;line-height:1.6}
+h1{font-size:24px}
+h2{font-size:18px}
+.sub{font-size:14px}
+label{font-size:14px}
+nav button{font-size:15px;padding:9px 15px}
+.pill{font-size:13px;padding:2px 9px}
+.chip{font-size:15px}
+.ghost,.chipbtn{font-size:14px}
+.tile{font-size:13px}
+.stat{font-size:14px}
+.stat b{font-size:20px}
+.muted{line-height:1.55}
+
+/* Each role/tier heading becomes a distinct section band */
+.rolehead{
+  background:color-mix(in srgb,var(--accent) 11%,var(--card));
+  border:1px solid color-mix(in srgb,var(--accent) 24%,var(--line));
+  border-left:4px solid var(--accent);
+  padding:10px 12px;
+  margin:14px 0 8px;
+  min-height:42px;
+  font-size:16px;
+  line-height:1.4;
+}
+.rolehead:first-child{margin-top:6px}
+.rolehead + .tiles{padding:4px 2px 10px}
+
+/* Make controls easier to tap */
+button,.tile,.circ{touch-action:manipulation}
+button{min-height:36px}
+.picker{min-height:46px}
+.picker input{font-size:16px;min-height:34px}
+.filters input,.filters select{font-size:15px;min-height:42px}
+.tile{min-height:92px}
+.tile .av{flex:none}
+.circ{font-size:13px;min-width:82px}
+.circ small{font-size:12px}
+.rec,.counter,.item{font-size:15px}
+.warn{font-size:15px;line-height:1.5}
+
+/* Tablet and phone layout */
+@media(max-width:760px){
+  header{padding:14px 12px 0}
+  main{padding:12px 12px 30px}
+  footer{padding:0 12px 24px;font-size:13px}
+  h1{font-size:21px;gap:7px}
+  nav{gap:6px;padding:12px 0 2px}
+  nav button{padding:9px 12px;font-size:14px}
+  .card{padding:12px;margin-bottom:12px}
+  .panel{padding:12px;margin-bottom:12px}
+  .row{grid-template-columns:minmax(0,1fr);gap:12px}
+  .filters{gap:7px}
+  .filters input,.filters select{flex:1 1 145px;min-width:0}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr))}
+  .tilegrid{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));max-height:60vh}
+  .detail{gap:12px;align-items:flex-start}
+  .detail .big{width:112px;height:178px}
+  .detail .info{min-width:0;flex:1}
+  .rolehead{font-size:15px;padding:9px 10px}
+}
+@media(max-width:480px){
+  body{font-size:15.5px}
+  h1{font-size:19px}
+  h2{font-size:17px}
+  .sub{font-size:13px}
+  header{padding-left:10px;padding-right:10px}
+  main{padding:10px 10px 26px}
+  .card,.panel{padding:10px}
+  nav{margin-right:-10px;padding-right:10px}
+  nav button{font-size:13px;padding:8px 10px}
+  .ptag{font-size:13px;padding:3px 10px}
+  .circles{gap:8px 6px;justify-content:space-around}
+  .circ{width:calc(25% - 8px);min-width:68px;max-width:90px;font-size:12px}
+  .circ .av{--s:52px !important}
+  .detail .big{width:96px;height:154px}
+  .detail .info h2{font-size:19px !important}
+  .rec{gap:7px;flex-wrap:wrap}
+  .rec > div[style*="width:25%"]{display:none}
+  .rec > button{margin-left:auto}
+  .counter{align-items:flex-start}
+  .item{gap:8px}
+  .item .av{--s:42px !important}
+  .stat{padding:6px 9px}
+  .stat b{font-size:18px}
+  .rolehead{margin-top:12px}
+  dialog{padding:12px;max-height:90vh;overflow:auto}
+  .picker{gap:5px}
+  .picker .ghost{padding:6px 8px;font-size:12px}
+}
+
+</style>
+</head>
+<body>
+<header>
+  <h1>Mobile Legends Assistant <span class="badge" id="season">Loading season…</span></h1>
+  <div class="sub">Counter picking, drafting and counter building – powered by your Prolog knowledge base</div>
+  <nav id="nav">
+    <button data-tab="counter" class="on">Counter Pick</button>
+    <button data-tab="draft">Draft Board</button>
+    <button data-tab="build">Counter Build</button>
+    <button data-tab="heroes">Heroes</button>
+    <button data-tab="meta">Meta</button>
+  </nav>
+</header>
+<main>
+  <datalist id="hl"></datalist>
+
+  <section id="tab-counter" class="on">
+    <div class="card"><label>Enemy heroes (type a name, or use Browse to pick from portraits)</label><div id="pEnemy"></div></div>
+    <!-- NEW: role filter for the Counter Pick tab (same style as the Meta tab) -->
+    <div class="filters" id="cRoles"></div>
+    <div id="counterHome">
+      <div class="panel"><span class="ptag">Recommended heroes</span><span class="muted" id="homeRecNote">best pick per role in the current meta - click one</span>
+        <div class="circles" id="homeRec"></div></div>
+      <div class="panel"><span class="ptag">Counter pick</span><b>Hero: <span id="homeSel"></span></b>
+        <div class="circles" id="homeCounters" style="margin-top:8px"></div></div>
+      <div class="panel"><span class="ptag">Hero details</span>
+        <div id="homeDetail" style="margin-top:6px"></div></div>
+    </div>
+    <div id="counterOut"></div>
+  </section>
+
+  <section id="tab-draft">
+    <div class="card row">
+      <div>
+        <label>Your team</label><div id="dMine"></div>
+        <button class="draft-action draft-action-red" id="counterMyDraft" type="button">Counter my draft</button>
+      </div>
+      <div>
+        <label>Enemy team</label><div id="dEnemy"></div>
+        <button class="draft-action draft-action-green" id="counterEnemyDraft" type="button">Counter enemy draft</button>
+      </div>
+    </div>
+    <div id="draftOut"></div>
+    <div id="reverseDraftOut"></div>
+  </section>
+
+  <section id="tab-build">
+    <div class="card row">
+      <div><label>Your hero</label><div id="pMine"></div></div>
+      <div><label>Enemy heroes <button class="ghost" id="copyEnemy">Copy from Counter tab</button></label><div id="pBEnemy"></div></div>
+    </div>
+    <div id="buildOut"></div>
+  </section>
+
+  <section id="tab-heroes">
+    <div class="filters">
+      <input id="q" type="search" placeholder="Search hero…">
+      <select id="fRole"><option value="">All roles</option><option>tank</option><option>fighter</option><option>assassin</option><option>mage</option><option>marksman</option><option>support</option></select>
+      <select id="fTier"><option value="">All tiers</option><option value="s_plus">S+</option><option value="s">S</option><option value="a">A</option><option value="b">B</option><option value="c">C</option></select>
+      <select id="fSort"><option value="tier">Sort: meta strength</option><option value="name">Sort: name</option></select>
+      <span class="muted" id="heroCount" style="align-self:center"></span>
+    </div>
+    <div class="grid" id="heroGrid"></div>
+  </section>
+
+  <section id="tab-meta"><div id="metaOut" class="muted">Loading…</div></section>
+
+  <dialog id="dlg"><button class="x" aria-label="Close">×</button><div id="dlgBody"></div></dialog>
+  <dialog id="sel">
+    <button class="x" aria-label="Close">×</button>
+    <h2 id="selTitle">Choose heroes</h2>
+    <div class="filters"><input id="selQ" type="search" placeholder="Search…"><span id="selRoles"></span></div>
+    <div class="tilegrid" id="selGrid"></div>
+    <p class="muted"><span id="selCount"></span> · <button class="ghost" id="selDone">Done</button></p>
+  </dialog>
+</main>
+<footer>Hero and item images come from src/frontend/img (or the Mobile Legends wiki as a fallback); all characters and artwork belong to Moonton. Meta data is a consensus of two November 2026 tier lists (see the Meta tab).</footer>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const T=s=>String(s).split('_').map(w=>w?w[0].toUpperCase()+w.slice(1):w).join(' ');
+const TIER={s_plus:'S+',s:'S',a:'A',b:'B',c:'C'};
+const ROLES=['tank','fighter','assassin','mage','marksman','support'];
+let HEROES=[],BYID={},BYNAME={},IMG={},ITEMS=[],ITEMBY={};
+
+async function api(path,q={}){
+  const u=new URL('/api/'+path,location.origin);
+  for(const [k,v] of Object.entries(q)) u.searchParams.set(k,v);
+  const r=await fetch(u); const j=await r.json();
+  if(!r.ok) throw new Error(j.error||'Request failed');
+  return j;
+}
+const pill=(t,c='')=>`<span class="pill ${c}">${esc(t)}</span>`;
+const tierPill=t=>pill(TIER[t]||t,'t-'+t);
+const hl=(id,name)=>`<a class="hl" data-hero="${esc(id)}">${esc(name)}</a>`;
+const hue=id=>{let x=0;for(const c of id)x=(x*31+c.charCodeAt(0))%360;return x};
+const av=(id,s=40)=>{const h=BYID[id];const nm=h?h.name:T(id);return `<span class="av" data-av="h:${esc(id)}" style="--s:${s}px;--h:${hue(id)}">${esc(nm[0])}</span>`};
+const iav=(id,s=40)=>{const i=ITEMBY[id];const nm=i?i.name:T(id);return `<span class="av sq" data-av="i:${esc(id)}" style="--s:${s}px;--h:${hue(id)}">${esc(nm[0])}</span>`};
+const store={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+const go=tab=>document.querySelector(`#nav [data-tab="${tab}"]`).click();
+
+/* ---------- images (Mobile Legends wiki, fetched by your browser; local files in web/img win) ---------- */
+const WIKI='https://mobile-legends.fandom.com';
+const WT={popol_and_kupa:'Popol and Kupa',x_borg:'X.Borg',chang_e:"Chang'e",yi_sun_shin:'Yi Sun-shin',lapu_lapu:'Lapu-Lapu',luo_yi:'Luo Yi'};
+let LOCALBAD=false;
+const jget=async u=>(await fetch(u)).json();
+const wurl=p=>{const u=new URL(WIKI+'/api.php');Object.entries({format:'json',origin:'*',...p}).forEach(([k,v])=>u.searchParams.set(k,v));return u};
+const PI={prop:'pageimages',piprop:'thumbnail',pithumbsize:'220',pilicense:'any'};  // pilicense=any: wiki game art is non-free
+/* step 1: batch by exact title */
+async function stBatch(list){
+  const q=(await jget(wurl({action:'query',...PI,pilimit:'50',redirects:'1',titles:list.map(e=>e.title).join('|')}))).query||{}, norm={}, red={}, byT={};
+  (q.normalized||[]).forEach(n=>norm[n.from]=n.to); (q.redirects||[]).forEach(r=>red[r.from]=r.to);
+  Object.values(q.pages||{}).forEach(p=>{if(p.thumbnail)byT[p.title]=p.thumbnail.source});
+  list.forEach(e=>{let t=e.title;t=norm[t]||t;t=red[t]||t;if(byT[t])IMG[e.key]=byT[t]});
+}
+/* step 2: Fandom Articles/Details thumbnails */
+async function stDetails(list){
+  const u=new URL(WIKI+'/api/v1/Articles/Details');
+  u.searchParams.set('titles',list.map(e=>e.title).join(',')); u.searchParams.set('width','220'); u.searchParams.set('height','220');
+  const items=(await jget(u)).items||{}, byT={};
+  Object.values(items).forEach(i=>{if(i.thumbnail)byT[i.title]=i.thumbnail});
+  list.forEach(e=>{if(byT[e.title])IMG[e.key]=byT[e.title]});
+}
+/* step 3: wiki search for the closest page, one by one */
+async function stSearch(e){
+  const q=(await jget(wurl({action:'query',generator:'search',gsrsearch:e.title,gsrlimit:'1',gsrnamespace:'0',...PI}))).query||{};
+  const p=Object.values(q.pages||{})[0]; if(p&&p.thumbnail)IMG[e.key]=p.thumbnail.source;
+}
+/* step 4: pick an image file from the page's own file list */
+async function stFiles(e){
+  const q=(await jget(wurl({action:'query',prop:'images',imlimit:'60',titles:e.title,redirects:'1'}))).query||{};
+  const files=(Object.values(q.pages||{})[0]||{}).images||[]; if(!files.length)return;
+  const words=e.title.toLowerCase().split(/[^a-z]+/).filter(Boolean);
+  const score=f=>{const n=f.title.toLowerCase();return (words.every(w=>n.includes(w))?4:0)+(/icon|portrait|avatar|hero|splash/.test(n)?2:0)+(/\.(png|jpe?g|webp)$/.test(n)?1:0)-(/skill|emblem|spell|\.svg|\.gif|logo/.test(n)?5:0)};
+  const best=files.map(f=>[score(f),f]).sort((a,b)=>b[0]-a[0])[0]; if(!best||best[0]<3)return;
+  const r=(await jget(wurl({action:'query',prop:'imageinfo',iiprop:'url',iiurlwidth:'220',titles:best[1].title}))).query||{};
+  const ii=((Object.values(r.pages||{})[0]||{}).imageinfo||[])[0]; if(ii)IMG[e.key]=ii.thumburl||ii.url;
+}
+async function loadImages(){
+  IMG={...store.get('mlimg6',{})};
+  if(!LOCALBAD){HEROES.forEach(h=>{if(h.local)IMG['h:'+h.id]=h.local}); ITEMS.forEach(i=>{if(i.local)IMG['i:'+i.id]=i.local});}
+  fillAvatars();
+  const all=[...HEROES.map(h=>({key:'h:'+h.id,title:WT[h.id]||h.name})),...ITEMS.map(i=>({key:'i:'+i.id,title:i.name}))];
+  const need=()=>all.filter(e=>!IMG[e.key]);
+  for(const fn of [stBatch,stDetails]){
+    const todo=need();
+    for(let i=0;i<todo.length;i+=40){ try{await fn(todo.slice(i,i+40));}catch(e){} fillAvatars(); }
+  }
+  for(const fn of [stSearch,stFiles]){            // slower per-item fallbacks, 4 at a time
+    const todo=need();
+    for(let i=0;i<todo.length;i+=4){ await Promise.all(todo.slice(i,i+4).map(e=>fn(e).catch(()=>{}))); fillAvatars(); }
+  }
+  store.set('mlimg6',Object.fromEntries(Object.entries(IMG).filter(([,v])=>!v.startsWith('/img/'))));
+  const miss=need().length; if(miss) console.warn('No image found for',miss,'entries:',need().map(e=>e.title).join(', '));
+}
+function fillAvatars(){
+  document.querySelectorAll('.av[data-av]:not([data-ld])').forEach(el=>{
+    const u=IMG[el.dataset.av]; if(!u)return;
+    el.dataset.ld=1; const im=new Image(); im.referrerPolicy='no-referrer'; im.alt='';
+    im.onload=()=>el.appendChild(im); im.onerror=()=>{delete IMG[el.dataset.av];delete el.dataset.ld;if(u.startsWith('/img/')&&!LOCALBAD){LOCALBAD=true;loadImages();}}; im.src=u;
+  });
+}
+let mo; new MutationObserver(()=>{clearTimeout(mo);mo=setTimeout(fillAvatars,30)}).observe(document.body,{childList:true,subtree:true});
+
+/* ---------- hero picker (chips + typeahead + portrait browser) ---------- */
+function picker(root,max,key,onChange){
+  const st={ids:store.get(key,[]).filter(i=>BYID[i]).slice(0,max),max};
+  root.className='picker';
+  root.innerHTML='<div class="chips"></div><input type="text" list="hl" placeholder="Type a hero name…" autocomplete="off"><button class="ghost" data-a="browse">Browse</button><button class="ghost" data-a="rand">🎲 Random</button><button class="ghost" data-a="clear">Clear</button>';
+  const chips=root.firstChild, inp=$('input',root);
+  st.draw=()=>{
+    chips.innerHTML=st.ids.map(id=>`<span class="chip">${av(id,24)}${esc(BYID[id].name)}<button data-id="${id}" aria-label="Remove">×</button></span>`).join('');
+    inp.disabled=st.ids.length>=max; inp.placeholder=st.ids.length>=max?'':'Type a hero name…';
+    store.set(key,st.ids); onChange(st.ids);
+  };
+  st.set=ids=>{st.ids=[...new Set(ids)].slice(0,max);st.draw()};
+  st.add=id=>{if(BYID[id]&&!st.ids.includes(id)&&st.ids.length<max){st.ids.push(id);st.draw();return true}return false};
+  st.toggle=id=>{st.ids.includes(id)?st.ids=st.ids.filter(i=>i!==id):st.add(id);st.draw()};
+  const find=v=>{v=v.trim().toLowerCase();return BYNAME[v]||BYID[v.replace(/[\s.'-]+/g,'_')]};
+  const addTxt=v=>{const h=find(v);if(h){inp.value='';st.add(h.id)}};
+  inp.addEventListener('input',()=>{if(BYNAME[inp.value.trim().toLowerCase()])addTxt(inp.value)});
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addTxt(inp.value)}});
+  root.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b)return;
+    if(b.dataset.id){st.set(st.ids.filter(i=>i!==b.dataset.id))}
+    else if(b.dataset.a==='clear')st.set([]);
+    else if(b.dataset.a==='rand'){const pool=HEROES.map(h=>h.id).filter(i=>!st.ids.includes(i));const n=Math.max(1,max-st.ids.length);const r=[];while(r.length<n&&pool.length)r.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);st.set([...st.ids,...r])}
+    else if(b.dataset.a==='browse')openSel(st);
+  });
+  st.draw(); return st;
+}
+/* portrait browser dialog */
+const SEL={st:null,role:''};
+function renderSel(){
+  const q=$('#selQ').value.trim().toLowerCase(), full=SEL.st.ids.length>=SEL.st.max;
+  $('#selGrid').innerHTML=HEROES.filter(h=>(!q||h.name.toLowerCase().includes(q))&&(!SEL.role||h.roles.includes(SEL.role)))
+    .map(h=>{const on=SEL.st.ids.includes(h.id);return `<div class="tile ${on?'on':''} ${full&&!on?'dis':''}" data-pick="${h.id}">${av(h.id,52)}<span>${esc(h.name)}</span></div>`}).join('');
+  $('#selCount').textContent=`${SEL.st.ids.length}/${SEL.st.max} selected`;
+}
+function openSel(st){
+  SEL.st=st;SEL.role='';$('#selQ').value='';$('#selTitle').textContent=st.max===1?'Choose a hero':`Choose up to ${st.max} heroes`;
+  $('#selRoles').innerHTML=['',...ROLES].map(r=>`<button class="chipbtn ${r===''?'on':''}" data-role="${r}">${r?T(r):'All'}</button>`).join(' ');
+  renderSel(); $('#sel').showModal();
+}
+
+/* ---------- Counter pick ---------- */
+let enemy;
+let cRole='';   // NEW: selected role filter on the Counter Pick tab ('' = all roles)
+
+/* NEW: draw the role chips (All roles, Tank, Fighter, ...) */
+function drawCRoles(){
+  $('#cRoles').innerHTML=['',...ROLES].map(r=>`<button class="chipbtn ${r===cRole?'on':''}" data-crole="${r}">${r?T(r):'All roles'}</button>`).join('');
+}
+drawCRoles();
+
+async function runCounter(ids){
+  const out=$('#counterOut'), home=$('#counterHome');
+  home.hidden=ids.length>0;
+  if(!ids.length){out.innerHTML='';renderHome();return;}
+  out.innerHTML='<p class="muted">Thinking…</p>';
+  try{ out.innerHTML=renderCounter(await api('team',{enemies:ids.join(',')})); }
+  catch(e){ out.innerHTML=`<p class="err">${esc(e.message)}</p>`; }
+}
+/* ---------- start screen: recommended heroes -> their counters -> details ---------- */
+const CORE=['tank','fighter','assassin','mage','marksman'];
+const HOME={sel:null,rec:[],busy:0};
+function recommended(){
+  const best=l=>l.sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
+  /* NEW: a role is selected -> show the top 5 heroes of that role */
+  if(cRole){
+    const primary=best(HEROES.filter(x=>x.roles[0]===cRole));
+    const others=best(HEROES.filter(x=>x.roles.includes(cRole)&&x.roles[0]!==cRole));
+    return [...primary,...others].slice(0,5).map(h=>({...h,role:cRole}));
+  }
+  /* All roles -> original behaviour: best pick per core role */
+  const used=new Set(), out=[];
+  for(const r of CORE){
+    const h=best(HEROES.filter(x=>x.roles[0]===r&&!used.has(x.id)))[0]||best(HEROES.filter(x=>x.roles.includes(r)&&!used.has(x.id)))[0];
+    if(h){used.add(h.id);out.push({...h,role:r});}
+  }
+  return out;
+}
+function renderHome(){
+  if(!HEROES.length)return;
+  if(!HOME.rec.length)HOME.rec=recommended();
+  if(!HOME.sel||!HOME.rec.some(h=>h.id===HOME.sel))HOME.sel=HOME.rec.length?HOME.rec[0].id:null;
+  $('#homeRecNote').textContent=cRole?`top ${T(cRole)} heroes in the current meta - click one`:'best pick per role in the current meta - click one';
+  $('#homeRec').innerHTML=HOME.rec.length
+    ?HOME.rec.map(h=>`<button class="circ ${h.id===HOME.sel?'on':''}" data-home="${esc(h.id)}">${av(h.id,64)}<b>${esc(h.name)}</b><small>${T(h.role)} · ${TIER[h.tier]||h.tier}</small></button>`).join('')
+    :'<span class="muted">No heroes found for this role.</span>';
+  loadHomeHero(HOME.sel);
+}
+async function loadHomeHero(id){
+  if(!id)return; const mark=++HOME.busy;
+  $('#homeSel').textContent=BYID[id]?BYID[id].name:id;
+  $('#homeCounters').innerHTML='<span class="muted">Thinking…</span>';
+  try{
+    const d=await api('hero',{id}); if(mark!==HOME.busy)return;
+    const cs=d.counteredBy, circ=c=>`<button class="circ" data-hero="${esc(c.id)}" title="${esc(c.reason||'')}">${av(c.id,64)}<b>${esc(c.name)}</b><small>${esc(c.type.replace('_','-'))}</small></button>`;
+    $('#homeCounters').innerHTML=cs.length?cs.slice(0,5).map(circ).join('')+(cs.length>5?'<span class="gap"></span>'+cs.slice(5,8).map(circ).join(''):''):'<span class="muted">No counters recorded for this hero.</span>';
+    const why=cs.filter(c=>c.reason).slice(0,3).map(c=>`<div class="why"><b>${esc(c.name)}</b> <span class="muted">${esc(c.reason)}</span></div>`).join('');
+    $('#homeDetail').innerHTML=`<div class="detail">${d.full?`<img class="big" src="${esc(d.full)}" alt="${esc(d.name)}">`:av(d.id,150)}
+      <div class="info"><h2 style="font-size:22px;margin:0 0 4px">${esc(d.name)} ${tierPill(d.tier)}</h2>
+      <div class="muted" style="margin-bottom:6px">Meta score ${d.score}/5 · difficulty ${esc(d.difficulty)}</div>
+      <div>${d.roles.map(r=>pill(r)).join('')}${d.damage.map(r=>pill(r)).join('')}${d.lanes.map(r=>pill(r)).join('')}</div>
+      ${why?`<div style="margin-top:8px"><b>Why these heroes counter ${esc(d.name)}</b>${why}</div>`:''}
+      <p style="margin-top:12px"><button class="ghost" data-enemy="${esc(d.id)}">Analyze ${esc(d.name)} as an enemy</button> <button class="ghost" data-build="${esc(d.id)}">Build as ${esc(d.name)} →</button></p></div></div>`;
+  }catch(e){ if(mark===HOME.busy)$('#homeCounters').innerHTML=`<span class="err">${esc(e.message)}</span>`; }
+}
+function warnings(a){
+  const w=[];
+  if(a.sustain.length) w.push(`Sustain detected (${a.sustain.join(', ')}) – build anti-heal early.`);
+  if(a.mobile.length) w.push(`High mobility (${a.mobile.join(', ')}) – Khufra, Saber or Phoveus stop dashes.`);
+  if(a.cc.length>=2) w.push(`CC-heavy team (${a.cc.join(', ')}) – consider Diggie, Tough Boots or Purify.`);
+  if(a.shield.length) w.push(`Shields (${a.shield.join(', ')}) – Dominance Ice or Esmeralda.`);
+  return w.map(x=>`<div class="warn">⚠ ${esc(x)}</div>`).join('');
+}
+const counterRow=c=>`<div class="counter">${av(c.id,36)}<div>${pill(c.type.replace('_','-'),c.type)} ${hl(c.id,c.name)}${c.reason?`<div class="muted">${esc(c.reason)}</div>`:''}</div></div>`;
+function renderCounter(d){
+  const a=d.analysis;
+  /* NEW: the role filter also narrows the "Best overall counter picks" list */
+  const recList=d.recommendations.filter(r=>!cRole||r.roles.includes(cRole));
+  const max=Math.max(1,...recList.map(r=>r.score));
+  const stats=[['Physical',a.physical],['Magic',a.magic],['Hybrid',a.hybrid]].map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join('');
+  const recs=recList.map(r=>`<div class="rec">${av(r.id,42)}<div style="flex:1;min-width:0">${hl(r.id,r.name)} ${tierPill(r.tier)}<div>${r.roles.map(x=>pill(x)).join('')}</div></div><div style="width:25%"><div class="bar" style="width:${Math.round(r.score/max*100)}%"></div></div><b>${r.score}</b><button class="ghost" data-build="${r.id}">Build →</button></div>`).join('')||`<p class="muted">${cRole?`No ${esc(T(cRole))} counters found. Try another role or All roles.`:'No strong counters found.'}</p>`;
+  const per=d.enemies.map(e=>`<div class="card"><h2>${av(e.id,34)} Counters for ${hl(e.id,e.name)}</h2>${e.counters.length?e.counters.map(counterRow).join(''):'<p class="muted">No specific counters recorded.</p>'}</div>`).join('');
+  return `<div class="card"><h2>Enemy composition</h2><div class="stats">${stats}</div>${warnings(a)}</div>
+  <div class="card"><h2>Best overall counter picks${cRole?` <span class="muted" style="font-weight:400;font-size:13px">(${esc(T(cRole))} only)</span>`:''}</h2>${recs}</div>${per}`;
+}
+
+/* ---------- Draft board ---------- */
+let dMine,dEnemy;
+async function runDraft(){
+  const out=$('#draftOut'); if(!dMine||!dEnemy)return;
+  out.innerHTML='<p class="muted">Thinking…</p>';
+  try{
+    const d=await api('draft',{mine:dMine.ids.join(','),enemies:dEnemy.ids.join(',')});
+    const m=d.mine, tiles=(l,extra='')=>`<div class="tiles">${l.map(r=>`<div class="tile" data-addmine="${r.id}" title="Click to add to your team">${av(r.id,48)}<span>${esc(r.name)}</span>${tierPill(r.tier)}<span class="sc">${r.score}</span></div>`).join('')}</div>`;
+    let bal='';
+    if(dMine.ids.length){
+      bal=`<div class="stats"><div class="stat"><b>${m.physical}</b>Physical</div><div class="stat"><b>${m.magic}</b>Magic</div><div class="stat"><b>${m.hybrid}</b>Hybrid</div></div>`;
+      if(dMine.ids.length>=2&&(m.physical===dMine.ids.length-m.hybrid&&m.magic===0||m.magic===dMine.ids.length-m.hybrid&&m.physical===0)) bal+='<div class="warn">⚠ One damage type only – the enemy can stack a single resistance.</div>';
+      if(m.sustain.length>=2) bal+='<div class="warn">⚠ Several sustain heroes – vulnerable to anti-heal.</div>';
+    }
+    const syn=d.synergies.length?`<h2 style="margin-top:12px">Synergies</h2>${d.synergies.map(s=>`<span class="pill t-s">✦ ${esc(s.a)} + ${esc(s.b)}</span>`).join('')}`:'';
+    const roles=d.roles.map(r=>`<div class="rolehead">${T(r.role)} ${r.covered?'<span class="ok">✓ covered</span>':'<span class="need">● needed</span>'}</div>${tiles(r.picks)}`).join('');
+    out.innerHTML=`${dMine.ids.length?`<div class="card"><h2>Your team balance</h2>${bal}${syn}</div>`:''}
+    ${d.counterPicks.length?`<div class="card"><h2>Top counters to the enemy team <span class="muted" style="font-weight:400;font-size:13px">(click to add)</span></h2>${tiles(d.counterPicks.slice(0,10))}</div>`:''}
+    <div class="card"><h2>Best pick per role <span class="muted" style="font-weight:400;font-size:13px">(counter value + team fit + meta)</span></h2>${roles}</div>`;
+  }catch(e){ out.innerHTML=`<p class="err">${esc(e.message)}</p>`; }
+}
+
+/* Build a complete counter composition directly into the opposite team's picker. */
+function chooseCounterTeam(primary=[],secondary=[],against=[]){
+  const blocked=new Set(against), chosen=[];
+  const add=r=>{const id=typeof r==='string'?r:r?.id;if(id&&BYID[id]&&!blocked.has(id)&&!chosen.includes(id)&&chosen.length<5)chosen.push(id);};
+  [...primary,...secondary].forEach(add);
+  return chosen;
+}
+
+/* Counter your current draft: automatically build the enemy team's response. */
+async function runCounterMyDraft(){
+  const out=$('#reverseDraftOut');
+  if(!dMine||!dMine.ids.length){out.innerHTML='<p class="muted">Add at least one hero to Your team first.</p>';return;}
+  out.innerHTML='<p class="muted">Building a team to counter your draft…</p>';
+  try{
+    const result=await api('team',{enemies:dMine.ids.join(',')});
+    const picks=chooseCounterTeam(result.recommendations||[],[],dMine.ids);
+    if(!picks.length) throw new Error('No valid counter heroes were returned by the Prolog knowledge base.');
+    dEnemy.set(picks);
+    out.innerHTML=`<div class="card"><h2>Enemy counter team built automatically</h2><p class="muted">Your selected heroes were used as the opposing draft. The enemy team has been filled with the highest-ranked available counters.</p><div class="tiles">${picks.map(id=>`<div class="tile">${av(id,48)}<span>${esc(BYID[id].name)}</span>${tierPill(BYID[id].tier)}</div>`).join('')}</div></div>`;
+    runDraft();
+    out.scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){out.innerHTML=`<p class="err">${esc(e.message)}</p>`;}
+}
+
+/* ---------- Counter build ---------- */
+let mine,benemy;
+async function runBuild(){
+  const out=$('#buildOut');
+  if(!mine||!benemy)return;
+  if(!mine.ids.length||!benemy.ids.length){out.innerHTML='<p class="muted">Choose your hero and at least one enemy.</p>';return;}
+  out.innerHTML='<p class="muted">Thinking…</p>';
+  try{
+    const d=await api('build',{hero:mine.ids[0],enemies:benemy.ids.join(',')});
+    const s=d.summary,a=s.analysis;
+    const bootsWhy=a.cc.length>=2?'Heavy CC on the enemy team':(s.boots==='warrior_boots'?'Physical-heavy enemy team':'Magic-heavy or mixed enemy team');
+    const items=d.items.map((i,n)=>`<div class="item"><div class="num">${n+1}</div>${iav(i.id,48)}<div><b>${esc(i.name)}</b> ${i.price?`<span class="muted">· ${i.price} gold</span>`:''}${i.passive?`<div class="muted">${esc(i.passive)}</div>`:''}</div></div>`).join('');
+    out.innerHTML=`<div class="card"><h2>${av(d.hero,40)} Recommended build for ${esc(d.name)}</h2>${items}</div>
+    <div class="card"><h2>Why</h2>
+      <div class="stats"><div class="stat"><b>${a.physical}</b>Physical</div><div class="stat"><b>${a.magic}</b>Magic</div></div>
+      <div class="warn">Boots: <b>${esc(T(s.boots))}</b> – ${esc(bootsWhy)}</div>
+      <div class="warn">Defense: <b>${esc(T(s.defense))}</b></div>
+      ${a.sustain.length?`<div class="warn">Anti-heal required (${esc(a.sustain.join(', '))}) – build <b>${esc(T(s.antiHealPick))}</b>.</div>`:'<div class="warn good">No significant sustain detected.</div>'}
+      ${warnings({...a,sustain:[]})}</div>`;
+  }catch(e){ out.innerHTML=`<p class="err">${esc(e.message)}</p>`; }
+}
+
+/* ---------- Heroes ---------- */
+const RANK={s_plus:0,s:1,a:2,b:3,c:4};
+function drawHeroes(){
+  const q=$('#q').value.trim().toLowerCase(), role=$('#fRole').value, tier=$('#fTier').value, sort=$('#fSort').value;
+  const list=HEROES.filter(h=>(!q||h.name.toLowerCase().includes(q))&&(!role||h.roles.includes(role))&&(!tier||h.tier===tier))
+    .sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):(b.score-a.score)||a.name.localeCompare(b.name));
+  $('#heroCount').textContent=`${list.length} heroes`;
+  $('#heroGrid').innerHTML=list.map(h=>`<div class="card hero" data-hero="${esc(h.id)}">${av(h.id,56)}<div><b>${esc(h.name)}</b> ${tierPill(h.tier)}<div>${h.roles.map(r=>pill(r)).join('')}</div><div class="muted">${esc(h.damage.join('/'))} · ${esc(h.lanes.join(', '))}</div></div></div>`).join('')||'<p class="muted">No heroes match.</p>';
+}
+async function showHero(id){
+  const dlg=$('#dlg'); $('#dlgBody').innerHTML='<p class="muted">Loading…</p>'; if(!dlg.open)dlg.showModal();
+  try{
+    const h=await api('hero',{id}), list=a=>a.map(x=>pill(x)).join('');
+    const cs=l=>l.length?l.map(counterRow).join(''):'<span class="muted">None recorded</span>';
+    $('#dlgBody').innerHTML=`${h.full?`<img class="portrait" src="${esc(h.full)}" alt="${esc(h.name)}">`:''}<div style="display:flex;gap:14px;align-items:center;margin-bottom:8px">${av(h.id,h.full?56:84)}<div><h2 style="font-size:22px;margin:0">${esc(h.name)} ${tierPill(h.tier)}</h2><span class="muted">Meta score ${h.score}/5 · difficulty ${esc(h.difficulty)}</span></div></div>
+    <p>${list(h.roles)}${list(h.damage)}${list(h.lanes)}${list(h.specialty)}</p>
+    ${h.strengths.length?`<p><b>Strengths</b><br>${list(h.strengths.map(T))}</p>`:''}${h.weaknesses.length?`<p><b>Weaknesses</b><br>${list(h.weaknesses.map(T))}</p>`:''}
+    <p><b>Tags</b><br>${list(h.tags)}</p>
+    <p><button class="ghost" data-build="${h.id}">Build as this hero →</button> <button class="ghost" data-enemy="${h.id}">Add to enemy team</button></p>
+    <h2>Countered by</h2>${cs(h.counteredBy)}<h2 style="margin-top:12px">Strong against</h2>${cs(h.strongAgainst)}`;
+  }catch(e){ $('#dlgBody').innerHTML=`<p class="err">${esc(e.message)}</p>`; }
+}
+
+/* ---------- Meta ---------- */
+let META=null, metaRole='';
+async function loadMeta(){
+  if(!META){ try{META=await api('meta')}catch(e){$('#metaOut').innerHTML=`<p class="err">${esc(e.message)}</p>`;return} }
+  const d=META, lbl={1:'Must ban',2:'Should ban',3:'Situational'};
+  const tl=l=>`<div class="tiles">${l.filter(h=>!metaRole||h.roles.includes(metaRole)).map(h=>`<div class="tile" data-hero="${esc(h.id)}">${av(h.id,48)}<span>${esc(h.name)}</span>${h.tier?tierPill(h.tier):''}</div>`).join('')||'<span class="muted">none</span>'}</div>`;
+  $('#metaOut').innerHTML=`<div class="card"><h2>${esc(d.label)}</h2>
+    <p class="muted">Consensus of: ${d.sources.map(esc).join(' · ')}</p>
+    ${d.notes.map(n=>`<div class="warn">${esc(n)}</div>`).join('')}</div>
+  <div class="filters">${['',...ROLES].map(r=>`<button class="chipbtn ${r===metaRole?'on':''}" data-mrole="${r}">${r?T(r):'All roles'}</button>`).join('')}</div>
+  <div class="card"><h2>Tier list</h2>${d.tiers.map(t=>`<div class="rolehead">${tierPill(t.tier)} <span class="muted">${t.heroes.filter(h=>!metaRole||h.roles.includes(metaRole)).length} heroes</span></div>${tl(t.heroes)}`).join('')}</div>
+  <div class="card"><h2>Ban recommendations</h2>${d.bans.map(b=>`<div class="rolehead">${lbl[b.priority]}</div>${tl(b.heroes.map(h=>({...h,roles:BYID[h.id]?BYID[h.id].roles:[]})))}`).join('')}</div>`;
+}
+
+/* ---------- global events ---------- */
+document.addEventListener('click',e=>{
+  const t=e.target;
+  let el;
+  /* NEW: Counter Pick role chips */
+  if(el=t.closest('[data-crole]')){
+    cRole=el.dataset.crole; HOME.rec=[]; HOME.sel=null; drawCRoles();
+    if(enemy&&enemy.ids.length) runCounter(enemy.ids); else renderHome();
+    return;
+  }
+  if(el=t.closest('[data-home]')){HOME.sel=el.dataset.home;renderHome();return}
+  if(el=t.closest('[data-hero]')){e.preventDefault();showHero(el.dataset.hero);return}
+  if(el=t.closest('[data-build]')){mine.set([el.dataset.build]);benemy.set(enemy.ids.length?enemy.ids:benemy.ids);$('#dlg').close();go('build');return}
+  if(el=t.closest('[data-enemy]')){enemy.add(el.dataset.enemy);$('#dlg').close();go('counter');return}
+  if(el=t.closest('[data-addmine]')){dMine.add(el.dataset.addmine);return}
+  if(el=t.closest('[data-pick]')){const id=el.dataset.pick;if(SEL.st.max===1){SEL.st.set([id]);$('#sel').close()}else{SEL.st.toggle(id);renderSel()}return}
+  if(el=t.closest('[data-role]')){SEL.role=el.dataset.role;document.querySelectorAll('#selRoles .chipbtn').forEach(b=>b.classList.toggle('on',b===el));renderSel();return}
+  if(el=t.closest('[data-mrole]')){metaRole=el.dataset.mrole;loadMeta();return}
+  if(t.closest('#selDone'))$('#sel').close();
+  if(t.closest('.x')||t.tagName==='DIALOG')t.closest('dialog').close();
+});
+$('#selQ').addEventListener('input',()=>renderSel());
+$('#nav').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('main > section').forEach(s=>s.classList.toggle('on',s.id==='tab-'+b.dataset.tab));
+  if(b.dataset.tab==='meta')loadMeta();
+});
+$('#counterEnemyDraft').addEventListener('click',async()=>{
+  if(!dEnemy.ids.length){$('#draftOut').innerHTML='<p class="muted">Add at least one enemy hero first.</p>';return;}
+  $('#draftOut').innerHTML='<p class="muted">Building your counter team…</p>';
+  try{
+    const d=await api('draft',{mine:dMine.ids.join(','),enemies:dEnemy.ids.join(',')});
+    const rolePicks=(d.roles||[]).flatMap(r=>r.picks||[]);
+    const picks=chooseCounterTeam(d.counterPicks||[],rolePicks,dEnemy.ids);
+    if(!picks.length) throw new Error('No valid counter heroes were returned by the Prolog knowledge base.');
+    dMine.set(picks);
+    $('#draftOut').innerHTML=`<div class="card"><h2>Your counter team built automatically</h2><p class="muted">The enemy draft was analyzed and your team has been filled with the strongest available counter picks.</p><div class="tiles">${picks.map(id=>`<div class="tile">${av(id,48)}<span>${esc(BYID[id].name)}</span>${tierPill(BYID[id].tier)}</div>`).join('')}</div></div>`;
+    runDraft();
+    $('#draftOut').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){$('#draftOut').innerHTML=`<p class="err">${esc(e.message)}</p>`;}
+});
+$('#counterMyDraft').addEventListener('click',runCounterMyDraft);
+$('#copyEnemy').addEventListener('click',()=>benemy.set(enemy.ids));
+['q','fRole','fTier','fSort'].forEach(i=>$('#'+i).addEventListener('input',drawHeroes));
+
+(async()=>{
+  try{ HEROES=await api('heroes'); }
+  catch(e){ document.body.insertAdjacentHTML('afterbegin','<p class="err" style="padding:16px">Cannot reach the Prolog server. Run server.pl first.</p>'); return; }
+  HEROES.forEach(h=>{BYID[h.id]=h;BYNAME[h.name.toLowerCase()]=h;});
+  try{ITEMS=await api('items');}catch(e){ITEMS=[]}
+  ITEMS.forEach(i=>ITEMBY[i.id]=i);
+  $('#hl').innerHTML=HEROES.map(h=>`<option value="${esc(h.name)}">`).join('');
+  api('meta').then(m=>{META=m;$('#season').textContent=m.label}).catch(()=>{$('#season').textContent='Current season'});
+  enemy=picker($('#pEnemy'),5,'ml.enemy',runCounter);
+  mine=picker($('#pMine'),1,'ml.mine',()=>runBuild());
+  benemy=picker($('#pBEnemy'),5,'ml.benemy',()=>runBuild());
+  dMine=picker($('#dMine'),5,'ml.dmine',()=>runDraft());
+  dEnemy=picker($('#dEnemy'),5,'ml.denemy',()=>runDraft());
+  drawHeroes(); runDraft(); runBuild();
+  loadImages();
+})();
+</script>
+</body>
+</html>

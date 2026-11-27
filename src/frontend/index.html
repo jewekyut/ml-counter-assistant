@@ -29,6 +29,10 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 4px}
 .chips{display:contents}
 .chip{background:var(--accent);color:var(--accent-t);border-radius:999px;padding:2px 6px 2px 2px;display:inline-flex;align-items:center;gap:6px;font-size:14px}
 .chip button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
+.chip-hero-meta{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;padding:2px 0}
+.chip-name{font-size:14px;font-weight:600}
+.chip-role{font-size:10px;font-weight:500;color:color-mix(in srgb,var(--text) 82%,#000);line-height:1.2}
+
 .ghost{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;padding:4px 10px;cursor:pointer;font:inherit;font-size:13px}
 .ghost:hover{border-color:var(--accent);color:var(--accent)}
 .draft-action{margin-top:10px;border:1px solid transparent;border-radius:5px;padding:9px 13px;cursor:pointer;font:inherit;font-size:14px;font-weight:700;transition:.15s;width:100%}
@@ -394,13 +398,16 @@ function fillAvatars(){
 let mo; new MutationObserver(()=>{clearTimeout(mo);mo=setTimeout(fillAvatars,30)}).observe(document.body,{childList:true,subtree:true});
 
 /* ---------- hero picker (chips + typeahead + portrait browser) ---------- */
-function picker(root,max,key,onChange){
+function picker(root,max,key,onChange,showRoles=false){
   const st={ids:store.get(key,[]).filter(i=>BYID[i]).slice(0,max),max};
   root.className='picker';
   root.innerHTML='<div class="chips"></div><input type="text" list="hl" placeholder="Type a hero name…" autocomplete="off"><button class="ghost" data-a="browse">Browse</button><button class="ghost" data-a="rand">🎲 Random</button><button class="ghost" data-a="clear">Clear</button>';
   const chips=root.firstChild, inp=$('input',root);
   st.draw=()=>{
-    chips.innerHTML=st.ids.map(id=>`<span class="chip">${av(id,24)}${esc(BYID[id].name)}<button data-id="${id}" aria-label="Remove">×</button></span>`).join('');
+    chips.innerHTML=st.ids.map(id=>{
+      const h=BYID[id], roles=(h.roles||[]).map(T).join(' / ');
+      return `<span class="chip">${av(id,24)}<span class="chip-hero-meta"><span class="chip-name">${esc(h.name)}</span>${showRoles&&roles?`<small class="chip-role">${esc(roles)}</small>`:''}</span><button data-id="${id}" aria-label="Remove">×</button></span>`;
+    }).join('');
     inp.disabled=st.ids.length>=max; inp.placeholder=st.ids.length>=max?'':'Type a hero name…';
     store.set(key,st.ids); onChange(st.ids);
   };
@@ -679,10 +686,10 @@ $('#copyEnemy').addEventListener('click',()=>benemy.set(enemy.ids));
   $('#hl').innerHTML=HEROES.map(h=>`<option value="${esc(h.name)}">`).join('');
   api('meta').then(m=>{META=m;$('#season').textContent=m.label}).catch(()=>{$('#season').textContent='Current season'});
   enemy=picker($('#pEnemy'),5,'ml.enemy',runCounter);
-  mine=picker($('#pMine'),1,'ml.mine',()=>runBuild());
-  benemy=picker($('#pBEnemy'),5,'ml.benemy',()=>runBuild());
-  dMine=picker($('#dMine'),5,'ml.dmine',()=>runDraft());
-  dEnemy=picker($('#dEnemy'),5,'ml.denemy',()=>runDraft());
+  mine=picker($('#pMine'),1,'ml.mine',()=>runBuild(),true);
+  benemy=picker($('#pBEnemy'),5,'ml.benemy',()=>runBuild(),true);
+  dMine=picker($('#dMine'),5,'ml.dmine',()=>runDraft(),true);
+  dEnemy=picker($('#dEnemy'),5,'ml.denemy',()=>runDraft(),true);
   drawHeroes(); runDraft(); runBuild();
   loadImages();
 })();
