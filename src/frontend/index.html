@@ -69,12 +69,27 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 section{display:none}section.on{display:block}
 .rolehead{display:flex;align-items:center;gap:8px;margin:10px 0 4px;font-weight:600}
 .ok{color:var(--ok)}.need{color:var(--soft)}
+/* start screen (3 rounded panels) */
+.panel{background:var(--card);border:1.5px solid var(--line);border-radius:26px;padding:14px 18px 18px;margin-bottom:14px;animation:in .25s ease}
+.ptag{display:inline-block;border:1.5px solid var(--text);border-radius:999px;padding:1px 16px;font-weight:700;font-size:13px;margin:0 10px 10px 0}
+.circles{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px 14px}
+.circles .gap{width:26px}
+.circ{width:86px;text-align:center;cursor:pointer;font-size:12px;border:0;background:none;color:inherit;padding:4px 0;font-family:inherit}
+.circ .av{box-shadow:0 2px 8px rgba(0,0,0,.25);transition:.15s;margin:3px 0 8px}
+.circ:hover .av{transform:translateY(-2px)}
+.circ.on .av{outline:3px solid var(--accent);outline-offset:3px}
+.circ small{display:block;color:var(--muted)}
+.detail{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
+.detail .big{width:150px;height:240px;border-radius:18px;object-fit:cover;object-position:top;box-shadow:0 4px 14px rgba(0,0,0,.35);flex:none}
+.detail .info{flex:1;min-width:230px;align-self:stretch}
+.why{padding:5px 0;border-top:1px solid var(--line);font-size:14px}
+
 </style>
 </head>
 <body>
 <header>
   <h1>Mobile Legends Assistant <span class="badge" id="season">Loading season…</span></h1>
-  <div class="sub">Counter picking, drafting and counter building</div>
+  <div class="sub">Counter picking, drafting and counter building – powered by your Prolog knowledge base</div>
   <nav id="nav">
     <button data-tab="counter" class="on">Counter Pick</button>
     <button data-tab="draft">Draft Board</button>
@@ -88,6 +103,14 @@ section{display:none}section.on{display:block}
 
   <section id="tab-counter" class="on">
     <div class="card"><label>Enemy heroes (type a name, or use Browse to pick from portraits)</label><div id="pEnemy"></div></div>
+    <div id="counterHome">
+      <div class="panel"><span class="ptag">Recommended heroes</span><span class="muted">best pick per role in the current meta - click one</span>
+        <div class="circles" id="homeRec"></div></div>
+      <div class="panel"><span class="ptag">Counter pick</span><b>Hero: <span id="homeSel"></span></b>
+        <div class="circles" id="homeCounters" style="margin-top:8px"></div></div>
+      <div class="panel"><span class="ptag">Hero details</span>
+        <div id="homeDetail" style="margin-top:6px"></div></div>
+    </div>
     <div id="counterOut"></div>
   </section>
 
@@ -129,7 +152,7 @@ section{display:none}section.on{display:block}
     <p class="muted"><span id="selCount"></span> · <button class="ghost" id="selDone">Done</button></p>
   </dialog>
 </main>
-<footer>Hero portraits come from web/img or (mobilelegends.com); item images come from web/img/item (liquipedia.net); all characters and artwork belong to Moonton. Meta data is a consensus of two November 2026 tier lists (see the Meta tab).</footer>
+<footer>Hero and item images come from src/frontend/img (or the Mobile Legends wiki as a fallback); all characters and artwork belong to Moonton. Meta data is a consensus of two November 2026 tier lists (see the Meta tab).</footer>
 
 <script>
 const $=(s,r=document)=>r.querySelector(s);
@@ -262,11 +285,48 @@ function openSel(st){
 /* ---------- Counter pick ---------- */
 let enemy;
 async function runCounter(ids){
-  const out=$('#counterOut');
-  if(!ids.length){out.innerHTML='<p class="muted">Pick up to five enemy heroes to see counters.</p>';return;}
+  const out=$('#counterOut'), home=$('#counterHome');
+  home.hidden=ids.length>0;
+  if(!ids.length){out.innerHTML='';renderHome();return;}
   out.innerHTML='<p class="muted">Thinking…</p>';
   try{ out.innerHTML=renderCounter(await api('team',{enemies:ids.join(',')})); }
   catch(e){ out.innerHTML=`<p class="err">${esc(e.message)}</p>`; }
+}
+/* ---------- start screen: recommended heroes -> their counters -> details ---------- */
+const CORE=['tank','fighter','assassin','mage','marksman'];
+const HOME={sel:null,rec:[],busy:0};
+function recommended(){
+  const used=new Set(), out=[];
+  for(const r of CORE){
+    const best=l=>l.sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name))[0];
+    const h=best(HEROES.filter(x=>x.roles[0]===r&&!used.has(x.id)))||best(HEROES.filter(x=>x.roles.includes(r)&&!used.has(x.id)));
+    if(h){used.add(h.id);out.push({...h,role:r});}
+  }
+  return out;
+}
+function renderHome(){
+  if(!HEROES.length)return;
+  if(!HOME.rec.length)HOME.rec=recommended();
+  if(!HOME.sel&&HOME.rec.length)HOME.sel=HOME.rec[0].id;
+  $('#homeRec').innerHTML=HOME.rec.map(h=>`<button class="circ ${h.id===HOME.sel?'on':''}" data-home="${esc(h.id)}">${av(h.id,64)}<b>${esc(h.name)}</b><small>${T(h.role)} · ${TIER[h.tier]||h.tier}</small></button>`).join('');
+  loadHomeHero(HOME.sel);
+}
+async function loadHomeHero(id){
+  if(!id)return; const mark=++HOME.busy;
+  $('#homeSel').textContent=BYID[id]?BYID[id].name:id;
+  $('#homeCounters').innerHTML='<span class="muted">Thinking…</span>';
+  try{
+    const d=await api('hero',{id}); if(mark!==HOME.busy)return;
+    const cs=d.counteredBy, circ=c=>`<button class="circ" data-hero="${esc(c.id)}" title="${esc(c.reason||'')}">${av(c.id,64)}<b>${esc(c.name)}</b><small>${esc(c.type.replace('_','-'))}</small></button>`;
+    $('#homeCounters').innerHTML=cs.length?cs.slice(0,5).map(circ).join('')+(cs.length>5?'<span class="gap"></span>'+cs.slice(5,8).map(circ).join(''):''):'<span class="muted">No counters recorded for this hero.</span>';
+    const why=cs.filter(c=>c.reason).slice(0,3).map(c=>`<div class="why"><b>${esc(c.name)}</b> <span class="muted">${esc(c.reason)}</span></div>`).join('');
+    $('#homeDetail').innerHTML=`<div class="detail">${d.full?`<img class="big" src="${esc(d.full)}" alt="${esc(d.name)}">`:av(d.id,150)}
+      <div class="info"><h2 style="font-size:22px;margin:0 0 4px">${esc(d.name)} ${tierPill(d.tier)}</h2>
+      <div class="muted" style="margin-bottom:6px">Meta score ${d.score}/5 · difficulty ${esc(d.difficulty)}</div>
+      <div>${d.roles.map(r=>pill(r)).join('')}${d.damage.map(r=>pill(r)).join('')}${d.lanes.map(r=>pill(r)).join('')}</div>
+      ${why?`<div style="margin-top:8px"><b>Why these heroes counter ${esc(d.name)}</b>${why}</div>`:''}
+      <p style="margin-top:12px"><button class="ghost" data-enemy="${esc(d.id)}">Analyze ${esc(d.name)} as an enemy</button> <button class="ghost" data-build="${esc(d.id)}">Build as ${esc(d.name)} →</button></p></div></div>`;
+  }catch(e){ if(mark===HOME.busy)$('#homeCounters').innerHTML=`<span class="err">${esc(e.message)}</span>`; }
 }
 function warnings(a){
   const w=[];
@@ -371,6 +431,7 @@ async function loadMeta(){
 document.addEventListener('click',e=>{
   const t=e.target;
   let el;
+  if(el=t.closest('[data-home]')){HOME.sel=el.dataset.home;renderHome();return}
   if(el=t.closest('[data-hero]')){e.preventDefault();showHero(el.dataset.hero);return}
   if(el=t.closest('[data-build]')){mine.set([el.dataset.build]);benemy.set(enemy.ids.length?enemy.ids:benemy.ids);$('#dlg').close();go('build');return}
   if(el=t.closest('[data-enemy]')){enemy.add(el.dataset.enemy);$('#dlg').close();go('counter');return}
