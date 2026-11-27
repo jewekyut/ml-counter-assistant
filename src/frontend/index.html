@@ -103,8 +103,10 @@ section{display:none}section.on{display:block}
 
   <section id="tab-counter" class="on">
     <div class="card"><label>Enemy heroes (type a name, or use Browse to pick from portraits)</label><div id="pEnemy"></div></div>
+    <!-- NEW: role filter for the Counter Pick tab (same style as the Meta tab) -->
+    <div class="filters" id="cRoles"></div>
     <div id="counterHome">
-      <div class="panel"><span class="ptag">Recommended heroes</span><span class="muted">best pick per role in the current meta - click one</span>
+      <div class="panel"><span class="ptag">Recommended heroes</span><span class="muted" id="homeRecNote">best pick per role in the current meta - click one</span>
         <div class="circles" id="homeRec"></div></div>
       <div class="panel"><span class="ptag">Counter pick</span><b>Hero: <span id="homeSel"></span></b>
         <div class="circles" id="homeCounters" style="margin-top:8px"></div></div>
@@ -284,6 +286,14 @@ function openSel(st){
 
 /* ---------- Counter pick ---------- */
 let enemy;
+let cRole='';   // NEW: selected role filter on the Counter Pick tab ('' = all roles)
+
+/* NEW: draw the role chips (All roles, Tank, Fighter, ...) */
+function drawCRoles(){
+  $('#cRoles').innerHTML=['',...ROLES].map(r=>`<button class="chipbtn ${r===cRole?'on':''}" data-crole="${r}">${r?T(r):'All roles'}</button>`).join('');
+}
+drawCRoles();
+
 async function runCounter(ids){
   const out=$('#counterOut'), home=$('#counterHome');
   home.hidden=ids.length>0;
@@ -296,10 +306,17 @@ async function runCounter(ids){
 const CORE=['tank','fighter','assassin','mage','marksman'];
 const HOME={sel:null,rec:[],busy:0};
 function recommended(){
+  const best=l=>l.sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
+  /* NEW: a role is selected -> show the top 5 heroes of that role */
+  if(cRole){
+    const primary=best(HEROES.filter(x=>x.roles[0]===cRole));
+    const others=best(HEROES.filter(x=>x.roles.includes(cRole)&&x.roles[0]!==cRole));
+    return [...primary,...others].slice(0,5).map(h=>({...h,role:cRole}));
+  }
+  /* All roles -> original behaviour: best pick per core role */
   const used=new Set(), out=[];
   for(const r of CORE){
-    const best=l=>l.sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name))[0];
-    const h=best(HEROES.filter(x=>x.roles[0]===r&&!used.has(x.id)))||best(HEROES.filter(x=>x.roles.includes(r)&&!used.has(x.id)));
+    const h=best(HEROES.filter(x=>x.roles[0]===r&&!used.has(x.id)))[0]||best(HEROES.filter(x=>x.roles.includes(r)&&!used.has(x.id)))[0];
     if(h){used.add(h.id);out.push({...h,role:r});}
   }
   return out;
@@ -307,8 +324,11 @@ function recommended(){
 function renderHome(){
   if(!HEROES.length)return;
   if(!HOME.rec.length)HOME.rec=recommended();
-  if(!HOME.sel&&HOME.rec.length)HOME.sel=HOME.rec[0].id;
-  $('#homeRec').innerHTML=HOME.rec.map(h=>`<button class="circ ${h.id===HOME.sel?'on':''}" data-home="${esc(h.id)}">${av(h.id,64)}<b>${esc(h.name)}</b><small>${T(h.role)} · ${TIER[h.tier]||h.tier}</small></button>`).join('');
+  if(!HOME.sel||!HOME.rec.some(h=>h.id===HOME.sel))HOME.sel=HOME.rec.length?HOME.rec[0].id:null;
+  $('#homeRecNote').textContent=cRole?`top ${T(cRole)} heroes in the current meta - click one`:'best pick per role in the current meta - click one';
+  $('#homeRec').innerHTML=HOME.rec.length
+    ?HOME.rec.map(h=>`<button class="circ ${h.id===HOME.sel?'on':''}" data-home="${esc(h.id)}">${av(h.id,64)}<b>${esc(h.name)}</b><small>${T(h.role)} · ${TIER[h.tier]||h.tier}</small></button>`).join('')
+    :'<span class="muted">No heroes found for this role.</span>';
   loadHomeHero(HOME.sel);
 }
 async function loadHomeHero(id){
@@ -338,12 +358,15 @@ function warnings(a){
 }
 const counterRow=c=>`<div class="counter">${av(c.id,36)}<div>${pill(c.type.replace('_','-'),c.type)} ${hl(c.id,c.name)}${c.reason?`<div class="muted">${esc(c.reason)}</div>`:''}</div></div>`;
 function renderCounter(d){
-  const a=d.analysis, max=Math.max(1,...d.recommendations.map(r=>r.score));
+  const a=d.analysis;
+  /* NEW: the role filter also narrows the "Best overall counter picks" list */
+  const recList=d.recommendations.filter(r=>!cRole||r.roles.includes(cRole));
+  const max=Math.max(1,...recList.map(r=>r.score));
   const stats=[['Physical',a.physical],['Magic',a.magic],['Hybrid',a.hybrid]].map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join('');
-  const recs=d.recommendations.map(r=>`<div class="rec">${av(r.id,42)}<div style="flex:1;min-width:0">${hl(r.id,r.name)} ${tierPill(r.tier)}<div>${r.roles.map(x=>pill(x)).join('')}</div></div><div style="width:25%"><div class="bar" style="width:${Math.round(r.score/max*100)}%"></div></div><b>${r.score}</b><button class="ghost" data-build="${r.id}">Build →</button></div>`).join('')||'<p class="muted">No strong counters found.</p>';
+  const recs=recList.map(r=>`<div class="rec">${av(r.id,42)}<div style="flex:1;min-width:0">${hl(r.id,r.name)} ${tierPill(r.tier)}<div>${r.roles.map(x=>pill(x)).join('')}</div></div><div style="width:25%"><div class="bar" style="width:${Math.round(r.score/max*100)}%"></div></div><b>${r.score}</b><button class="ghost" data-build="${r.id}">Build →</button></div>`).join('')||`<p class="muted">${cRole?`No ${esc(T(cRole))} counters found. Try another role or All roles.`:'No strong counters found.'}</p>`;
   const per=d.enemies.map(e=>`<div class="card"><h2>${av(e.id,34)} Counters for ${hl(e.id,e.name)}</h2>${e.counters.length?e.counters.map(counterRow).join(''):'<p class="muted">No specific counters recorded.</p>'}</div>`).join('');
   return `<div class="card"><h2>Enemy composition</h2><div class="stats">${stats}</div>${warnings(a)}</div>
-  <div class="card"><h2>Best overall counter picks</h2>${recs}</div>${per}`;
+  <div class="card"><h2>Best overall counter picks${cRole?` <span class="muted" style="font-weight:400;font-size:13px">(${esc(T(cRole))} only)</span>`:''}</h2>${recs}</div>${per}`;
 }
 
 /* ---------- Draft board ---------- */
@@ -431,6 +454,12 @@ async function loadMeta(){
 document.addEventListener('click',e=>{
   const t=e.target;
   let el;
+  /* NEW: Counter Pick role chips */
+  if(el=t.closest('[data-crole]')){
+    cRole=el.dataset.crole; HOME.rec=[]; HOME.sel=null; drawCRoles();
+    if(enemy&&enemy.ids.length) runCounter(enemy.ids); else renderHome();
+    return;
+  }
   if(el=t.closest('[data-home]')){HOME.sel=el.dataset.home;renderHome();return}
   if(el=t.closest('[data-hero]')){e.preventDefault();showHero(el.dataset.hero);return}
   if(el=t.closest('[data-build]')){mine.set([el.dataset.build]);benemy.set(enemy.ids.length?enemy.ids:benemy.ids);$('#dlg').close();go('build');return}
