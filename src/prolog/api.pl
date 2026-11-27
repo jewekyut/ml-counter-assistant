@@ -1,7 +1,7 @@
 % ============================================================================
 % api.pl - JSON-ready data builders used by server.pl (no HTTP here, so it can
 % be tested from the Prolog console, e.g.  ?- team_json([fanny,atlas], D). )
-% ============================================================================
+% ===========================================================================
 :- module(ml_api, [heroes_json/1, hero_json/2, team_json/2, build_json/3,
                    draft_json/3, meta_json/1, items_json/1, parse_ids/2]).
 

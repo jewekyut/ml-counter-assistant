@@ -23,7 +23,7 @@
 % ============================================================================
 % HARD COUNTERS - Strong matchup advantages
 % hard_counter(Counter, Target) - Counter strongly beats Target
-% ============================================================================
+% ===========================================================================
 
 % --- Anti-dash heroes countered by Khufra ---
 hard_counter(khufra, fanny).
