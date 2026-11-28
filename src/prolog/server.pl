@@ -14,6 +14,7 @@
 :- use_module(library(readutil)).
 
 :- use_module(api).
+:- use_module(team_draft, [recommend_draft/5]).
 :- use_module(winrates, [winrates_json/1, predict_json/3]).
 
 :- dynamic app_dir/1, server_port/1.
@@ -24,6 +25,7 @@
 :- http_handler(root(api/hero),   api_hero,    []).
 :- http_handler(root(api/team),   api_team,    []).
 :- http_handler(root(api/build),  api_build,   []).
+:- http_handler(root(api/counter_draft), api_counter_draft, []).
 :- http_handler(root(api/draft),  api_draft,   []).
 :- http_handler(root(api/meta),   api_meta,    []).
 :- http_handler(root(api/strategies), api_strategies, []).
@@ -129,3 +131,8 @@ img_mime(webp, 'image/webp').
 api_strategies(Request) :-
     http_parameters(Request, [size(N,[integer,default(0)]), lane(L,[atom,default(all)])]),
     (strategies_json(N,L,Ds) -> reply_json_dict(Ds); bad("Invalid party size or lane")).
+
+api_counter_draft(Request) :-
+    http_parameters(Request,[size(N,[integer,default(5)]),lane(L,[atom,default(all)]),locked(M,[atom,default('')]),enemies(E,[atom])]),
+    parse_ids(M,Locked),parse_ids(E,Enemies),
+    (once(recommend_draft(N,L,Locked,Enemies,D))->reply_json_dict(D);bad("No valid composition: check party size, duplicate heroes and lane eligibility")).
