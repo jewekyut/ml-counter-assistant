@@ -14,6 +14,7 @@
 :- use_module(library(readutil)).
 
 :- use_module(api).
+:- use_module(winrates, [winrates_json/1, predict_json/3]).
 
 :- dynamic app_dir/1, server_port/1.
 :- prolog_load_context(directory, D), assertz(app_dir(D)).
@@ -26,6 +27,8 @@
 :- http_handler(root(api/draft),  api_draft,   []).
 :- http_handler(root(api/meta),   api_meta,    []).
 :- http_handler(root(api/items),  api_items,   []).
+:- http_handler(root(api/winrates), api_winrates, []).
+:- http_handler(root(api/predict),  api_predict,  []).
 :- http_handler(root(img),        serve_img,   [prefix]).
 
 % ---------------------------------------------------------------- server ---
@@ -83,6 +86,18 @@ api_meta(_) :-
 
 api_items(_) :-
     items_json(Ds), reply_json_dict(Ds).
+
+%% GET /api/winrates  -> all hero stats (+ meta, league average)
+api_winrates(_) :-
+    winrates_json(D), reply_json_dict(D).
+
+%% GET /api/predict?mine=a,b,c&enemies=d,e  -> predicted win chance of `mine`
+api_predict(Request) :-
+    http_parameters(Request, [mine(M, [atom, default('')]),
+                              enemies(E, [atom, default('')])]),
+    parse_ids(M, Mine), parse_ids(E, En),
+    (   predict_json(Mine, En, D) -> reply_json_dict(D)
+    ;   bad("Pick 1 to 5 valid heroes for your team") ).
 
 %% Local images: src/frontend/img/{hero,thumb,item}/<id>.(png|jpg)
 serve_img(Request) :-
