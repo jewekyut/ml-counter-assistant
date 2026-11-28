@@ -29,10 +29,6 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 4px}
 .chips{display:contents}
 .chip{background:var(--accent);color:var(--accent-t);border-radius:999px;padding:2px 6px 2px 2px;display:inline-flex;align-items:center;gap:6px;font-size:14px}
 .chip button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
-.chip-hero-meta{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;padding:2px 0}
-.chip-name{font-size:14px;font-weight:600}
-.chip-role{font-size:10px;font-weight:500;color:color-mix(in srgb,var(--text) 82%,#000);line-height:1.2}
-
 .ghost{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;padding:4px 10px;cursor:pointer;font:inherit;font-size:13px}
 .ghost:hover{border-color:var(--accent);color:var(--accent)}
 .draft-action{margin-top:10px;border:1px solid transparent;border-radius:5px;padding:9px 13px;cursor:pointer;font:inherit;font-size:14px;font-weight:700;transition:.15s;width:100%}
@@ -78,7 +74,22 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 4px}
 .counter{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}.counter:first-of-type{border-top:0}
 .item{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}.item:first-child{border-top:0}
 .num{background:var(--accent);color:var(--accent-t);width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:13px;flex:none}
-.hero{cursor:pointer;display:flex;gap:12px;align-items:center;margin:0;transition:.15s}.hero:hover{border-color:var(--accent);transform:translateY(-2px)}
+.hero{cursor:pointer;display:flex;gap:12px;align-items:center;margin:0;transition:.15s}
+.hero:hover{border-color:var(--accent);transform:translateY(-2px)}
+/* Fill each hero card with its full meta-tier color */
+.hero.meta-s_plus{background:#fef3c7;border-color:#f59e0b;color:#78350f}
+.hero.meta-s{background:#f3e8ff;border-color:#a855f7;color:#581c87}
+.hero.meta-a{background:#dbeafe;border-color:#3b82f6;color:#1e3a8a}
+.hero.meta-b{background:#dcfce7;border-color:#22c55e;color:#14532d}
+.hero.meta-c{background:#e5e7eb;border-color:#9ca3af;color:#374151}
+.hero .av{border-radius:8px !important}
+@media(prefers-color-scheme:dark){
+  .hero.meta-s_plus{background:#513b12;border-color:#d6a32b;color:#fde68a}
+  .hero.meta-s{background:#3b2056;border-color:#a855f7;color:#e9d5ff}
+  .hero.meta-a{background:#1e3a5f;border-color:#60a5fa;color:#bfdbfe}
+  .hero.meta-b{background:#16452c;border-color:#4ade80;color:#bbf7d0}
+  .hero.meta-c{background:#343946;border-color:#6b7280;color:#e5e7eb}
+}
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .filters input,.filters select{padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit}
 .chipbtn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:4px 12px;cursor:pointer;font:inherit;font-size:13px}
@@ -116,7 +127,9 @@ section{display:none}section.on{display:block}
 /* Subtle, consistent corner rounding across the interface.
    Hero portraits and avatar images retain their original shapes. */
 *:not(.av):not(.portrait):not(.big) { border-radius: 5px !important; }
-.av, .av img, .portrait, .detail .big { border-radius: revert; }
+.av img { border-radius: inherit !important; }
+/* Restore circular hero portraits and their selection outline. */
+.circ .av { border-radius: 50% !important; }
 
 
 /* Action button colors: build = green, enemy = soft red */
@@ -201,6 +214,7 @@ button{min-height:36px}
   .detail .info{min-width:0;flex:1}
   .rolehead{font-size:15px;padding:9px 10px}
 }
+
 @media(max-width:480px){
   body{font-size:15.5px}
   h1{font-size:19px}
@@ -230,7 +244,74 @@ button{min-height:36px}
   .picker{gap:5px}
   .picker .ghost{padding:6px 8px;font-size:12px}
 }
+/* Counter Build: align both hero pickers */
+#tab-build .row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
 
+#tab-build .row > div {
+  min-width: 0;
+}
+
+#tab-build .row > div > label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 42px;
+}
+
+#tab-build .picker {
+  width: 100%;
+  min-width: 0;
+  align-content: center;
+}
+
+#tab-build .picker input {
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  #tab-build .row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Rounded corners for hero cards only */
+.hero {
+  border-radius: 10px !important;
+}
+
+
+/* Meta tier list: color the entire hero group, not individual tiles. */
+#tab-meta .tiles.meta-tiles{padding:10px 8px;margin-bottom:12px;border:1px solid var(--tier-border);background:var(--tier-bg);color:var(--tier-text);border-radius:8px !important}
+#tab-meta .meta-tiles .tile:hover{background:color-mix(in srgb,var(--tier-border) 20%,transparent)}
+#tab-meta .meta-s_plus{--tier-bg:#fef3c7;--tier-border:#f59e0b;--tier-text:#78350f}
+#tab-meta .meta-s{--tier-bg:#f3e8ff;--tier-border:#a855f7;--tier-text:#581c87}
+#tab-meta .meta-a{--tier-bg:#dbeafe;--tier-border:#3b82f6;--tier-text:#1e3a8a}
+#tab-meta .meta-b{--tier-bg:#dcfce7;--tier-border:#22c55e;--tier-text:#14532d}
+#tab-meta .meta-c{--tier-bg:#e5e7eb;--tier-border:#9ca3af;--tier-text:#374151}
+@media(prefers-color-scheme:dark){
+#tab-meta .meta-s_plus{--tier-bg:#513b12;--tier-border:#d6a32b;--tier-text:#fde68a}
+#tab-meta .meta-s{--tier-bg:#3b2056;--tier-border:#a855f7;--tier-text:#e9d5ff}
+#tab-meta .meta-a{--tier-bg:#1e3a5f;--tier-border:#60a5fa;--tier-text:#bfdbfe}
+#tab-meta .meta-b{--tier-bg:#16452c;--tier-border:#4ade80;--tier-text:#bbf7d0}
+#tab-meta .meta-c{--tier-bg:#343946;--tier-border:#6b7280;--tier-text:#e5e7eb}
+}
+#tab-draft .sc[data-score-hero]{cursor:help;z-index:2}
+#scoreTip{position:fixed;z-index:9999;max-width:min(320px,90vw);padding:10px 12px;background:var(--card);color:var(--text);border:1px solid var(--accent);box-shadow:0 6px 24px #0005;font-size:13px;pointer-events:none;white-space:normal}
+#scoreTip[hidden]{display:none}
+
+#tab-strategies .strategy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:12px}
+#tab-strategies .strategy-card{margin:0;border-left:4px solid var(--accent)}
+#tab-strategies .strategy-card .tiles{background:var(--bg);padding:8px;gap:4px}
+#tab-strategies .strategy-card p{margin:8px 0;font-size:14px}
+#tab-strategies .strategy-card .tile{min-height:0;width:76px}
+#tab-strategies .strategy-card .av{border-radius:50% !important}
 </style>
 </head>
 <body>
@@ -243,6 +324,7 @@ button{min-height:36px}
     <button data-tab="build">Counter Build</button>
     <button data-tab="heroes">Heroes</button>
     <button data-tab="meta">Meta</button>
+    <button data-tab="strategies">Strategies &amp; Synergy</button>
   </nav>
 </header>
 <main>
@@ -297,6 +379,10 @@ button{min-height:36px}
     <div class="grid" id="heroGrid"></div>
   </section>
 
+  <section id="tab-strategies">
+    <div class="card"><h2>Strategies &amp; Synergy</h2><p class="muted">Explore coordinated compositions by party size. Recommendations are inferred from Prolog facts and seasonal scores, not live pick-rate rankings. Solo, duo and trio picks assume other teammates fill missing roles.</p><label>Party size</label><div class="filters" id="strategyFilters"></div><label>Preferred lane</label><div class="filters" id="strategyLanes"></div></div>
+    <div class="strategy-grid" id="strategyOut"></div>
+  </section>
   <section id="tab-meta"><div id="metaOut" class="muted">Loading…</div></section>
 
   <dialog id="dlg"><button class="x" aria-label="Close">×</button><div id="dlgBody"></div></dialog>
@@ -398,16 +484,13 @@ function fillAvatars(){
 let mo; new MutationObserver(()=>{clearTimeout(mo);mo=setTimeout(fillAvatars,30)}).observe(document.body,{childList:true,subtree:true});
 
 /* ---------- hero picker (chips + typeahead + portrait browser) ---------- */
-function picker(root,max,key,onChange,showRoles=false){
+function picker(root,max,key,onChange){
   const st={ids:store.get(key,[]).filter(i=>BYID[i]).slice(0,max),max};
   root.className='picker';
   root.innerHTML='<div class="chips"></div><input type="text" list="hl" placeholder="Type a hero name…" autocomplete="off"><button class="ghost" data-a="browse">Browse</button><button class="ghost" data-a="rand">🎲 Random</button><button class="ghost" data-a="clear">Clear</button>';
   const chips=root.firstChild, inp=$('input',root);
   st.draw=()=>{
-    chips.innerHTML=st.ids.map(id=>{
-      const h=BYID[id], roles=(h.roles||[]).map(T).join(' / ');
-      return `<span class="chip">${av(id,24)}<span class="chip-hero-meta"><span class="chip-name">${esc(h.name)}</span>${showRoles&&roles?`<small class="chip-role">${esc(roles)}</small>`:''}</span><button data-id="${id}" aria-label="Remove">×</button></span>`;
-    }).join('');
+    chips.innerHTML=st.ids.map(id=>`<span class="chip">${av(id,24)}${esc(BYID[id].name)}<button data-id="${id}" aria-label="Remove">×</button></span>`).join('');
     inp.disabled=st.ids.length>=max; inp.placeholder=st.ids.length>=max?'':'Type a hero name…';
     store.set(key,st.ids); onChange(st.ids);
   };
@@ -422,7 +505,27 @@ function picker(root,max,key,onChange,showRoles=false){
     const b=e.target.closest('button'); if(!b)return;
     if(b.dataset.id){st.set(st.ids.filter(i=>i!==b.dataset.id))}
     else if(b.dataset.a==='clear')st.set([]);
-    else if(b.dataset.a==='rand'){const all=HEROES.map(h=>h.id);let pool=all.filter(i=>!st.ids.includes(i));if(pool.length<max)pool=all.slice();const r=[];while(r.length<max&&pool.length)r.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);st.set(r)}
+    else if(b.dataset.a==='rand'){
+      const pool=HEROES.map(h=>h.id);
+
+      // Shuffle all heroes so Random replaces the current selection.
+      for(let i=pool.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [pool[i],pool[j]]=[pool[j],pool[i]];
+      }
+
+      let picks=pool.slice(0,max);
+
+      // Avoid repeating the exact same selection on consecutive clicks,
+      // whenever there are more heroes than available slots.
+      if(pool.length>max && picks.length===st.ids.length &&
+         picks.every(id=>st.ids.includes(id))){
+        [pool[0],pool[max]]=[pool[max],pool[0]];
+        picks=pool.slice(0,max);
+      }
+
+      st.set(picks);
+    }
     else if(b.dataset.a==='browse')openSel(st);
   });
   st.draw(); return st;
@@ -533,7 +636,7 @@ async function runDraft(){
   out.innerHTML='<p class="muted">Thinking…</p>';
   try{
     const d=await api('draft',{mine:dMine.ids.join(','),enemies:dEnemy.ids.join(',')});
-    const m=d.mine, tiles=(l,extra='')=>`<div class="tiles">${l.map(r=>`<div class="tile" data-addmine="${r.id}" title="Click to add to your team">${av(r.id,48)}<span>${esc(r.name)}</span>${tierPill(r.tier)}<span class="sc">${r.score}</span></div>`).join('')}</div>`;
+    const m=d.mine, tiles=(l,extra='')=>`<div class="tiles">${l.map(r=>`<div class="tile" data-addmine="${r.id}" title="Click to add to your team">${av(r.id,48)}<span>${esc(r.name)}</span>${tierPill(r.tier)}<span class="sc" tabindex="0" role="button" aria-label="Show counter information" data-score-hero="${esc(r.id)}">${r.score}</span></div>`).join('')}</div>`;
     let bal='';
     if(dMine.ids.length){
       bal=`<div class="stats"><div class="stat"><b>${m.physical}</b>Physical</div><div class="stat"><b>${m.magic}</b>Magic</div><div class="stat"><b>${m.hybrid}</b>Hybrid</div></div>`;
@@ -601,7 +704,7 @@ function drawHeroes(){
   const list=HEROES.filter(h=>(!q||h.name.toLowerCase().includes(q))&&(!role||h.roles.includes(role))&&(!tier||h.tier===tier))
     .sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):(b.score-a.score)||a.name.localeCompare(b.name));
   $('#heroCount').textContent=`${list.length} heroes`;
-  $('#heroGrid').innerHTML=list.map(h=>`<div class="card hero" data-hero="${esc(h.id)}">${av(h.id,56)}<div><b>${esc(h.name)}</b> ${tierPill(h.tier)}<div>${h.roles.map(r=>pill(r)).join('')}</div><div class="muted">${esc(h.damage.join('/'))} · ${esc(h.lanes.join(', '))}</div></div></div>`).join('')||'<p class="muted">No heroes match.</p>';
+  $('#heroGrid').innerHTML=list.map(h=>`<div class="card hero meta-${esc(h.tier)}" data-hero="${esc(h.id)}">${av(h.id,56)}<div><b>${esc(h.name)}</b> ${tierPill(h.tier)}<div>${h.roles.map(r=>pill(r)).join('')}</div><div class="muted">${esc(h.damage.join('/'))} · ${esc(h.lanes.join(', '))}</div></div></div>`).join('')||'<p class="muted">No heroes match.</p>';
 }
 async function showHero(id){
   const dlg=$('#dlg'); $('#dlgBody').innerHTML='<p class="muted">Loading…</p>'; if(!dlg.open)dlg.showModal();
@@ -622,14 +725,57 @@ let META=null, metaRole='';
 async function loadMeta(){
   if(!META){ try{META=await api('meta')}catch(e){$('#metaOut').innerHTML=`<p class="err">${esc(e.message)}</p>`;return} }
   const d=META, lbl={1:'Must ban',2:'Should ban',3:'Situational'};
-  const tl=l=>`<div class="tiles">${l.filter(h=>!metaRole||h.roles.includes(metaRole)).map(h=>`<div class="tile" data-hero="${esc(h.id)}">${av(h.id,48)}<span>${esc(h.name)}</span>${h.tier?tierPill(h.tier):''}</div>`).join('')||'<span class="muted">none</span>'}</div>`;
+  const tl=(l,tier="")=>`<div class="tiles${tier?` meta-tiles meta-${esc(tier)}`:""}">${l.filter(h=>!metaRole||h.roles.includes(metaRole)).map(h=>`<div class="tile" data-hero="${esc(h.id)}">${av(h.id,48)}<span>${esc(h.name)}</span>${h.tier?tierPill(h.tier):''}</div>`).join('')||'<span class="muted">none</span>'}</div>`;
   $('#metaOut').innerHTML=`<div class="card"><h2>${esc(d.label)}</h2>
     <p class="muted">Consensus of: ${d.sources.map(esc).join(' · ')}</p>
     ${d.notes.map(n=>`<div class="warn">${esc(n)}</div>`).join('')}</div>
   <div class="filters">${['',...ROLES].map(r=>`<button class="chipbtn ${r===metaRole?'on':''}" data-mrole="${r}">${r?T(r):'All roles'}</button>`).join('')}</div>
-  <div class="card"><h2>Tier list</h2>${d.tiers.map(t=>`<div class="rolehead">${tierPill(t.tier)} <span class="muted">${t.heroes.filter(h=>!metaRole||h.roles.includes(metaRole)).length} heroes</span></div>${tl(t.heroes)}`).join('')}</div>
+  <div class="card"><h2>Tier list</h2>${d.tiers.map(t=>`<div class="rolehead">${tierPill(t.tier)} <span class="muted">${t.heroes.filter(h=>!metaRole||h.roles.includes(metaRole)).length} heroes</span></div>${tl(t.heroes,t.tier)}`).join('')}</div>
   <div class="card"><h2>Ban recommendations</h2>${d.bans.map(b=>`<div class="rolehead">${lbl[b.priority]}</div>${tl(b.heroes.map(h=>({...h,roles:BYID[h.id]?BYID[h.id].roles:[]})))}`).join('')}</div>`;
 }
+
+/* Draft score tooltip: use the knowledge base, not inferred matchups. */
+const scoreTip=document.createElement('div');
+scoreTip.id='scoreTip';scoreTip.hidden=true;scoreTip.setAttribute('role','tooltip');document.body.appendChild(scoreTip);
+const scoreCache=new Map();let activeScore=null;
+function positionScore(){if(!activeScore)return;const r=activeScore.getBoundingClientRect();scoreTip.style.left=Math.max(8,Math.min(r.left,innerWidth-scoreTip.offsetWidth-8))+'px';scoreTip.style.top=(r.bottom+8+scoreTip.offsetHeight<=innerHeight?r.bottom+8:Math.max(8,r.top-scoreTip.offsetHeight-8))+'px';}
+async function showScore(el){
+ activeScore=el;scoreTip.hidden=false;scoreTip.textContent='Loading counters…';positionScore();
+ const id=el.dataset.scoreHero;
+ try{
+  if(!scoreCache.has(id))scoreCache.set(id,api('hero',{id}).catch(e=>{scoreCache.delete(id);throw e}));
+  const h=await scoreCache.get(id);if(activeScore!==el||!el.isConnected)return;
+  const all=h.strongAgainst||[], enemies=new Set(dEnemy?.ids||[]), matches=all.filter(c=>enemies.has(c.id));
+  const names=l=>l.map(c=>esc(c.name||BYID[c.id]?.name||c.id)).join(', ');
+  scoreTip.innerHTML=`<b>${esc(h.name)} — strong against</b>${enemies.size?`<div><b>Current enemy draft:</b> ${matches.length?names(matches):'No recorded matchups'}</div>`:''}<div><b>All recorded counters:</b> ${all.length?names(all):'None recorded'}</div><div class="muted">Draft score also includes team fit and meta.</div>`;positionScore();
+ }catch(e){if(activeScore===el){scoreTip.textContent='Counter information unavailable.';positionScore();}}
+}
+function hideScore(){activeScore=null;scoreTip.hidden=true;}
+document.addEventListener('pointerover',e=>{const el=e.target.closest('#tab-draft [data-score-hero]');if(el&&el!==activeScore)showScore(el)});
+document.addEventListener('pointerout',e=>{if(activeScore&&e.target===activeScore&&!activeScore.contains(e.relatedTarget))hideScore()});
+document.addEventListener('focusin',e=>{if(e.target.matches('#tab-draft [data-score-hero]'))showScore(e.target)});
+document.addEventListener('focusout',e=>{if(e.target===activeScore)hideScore()});
+document.addEventListener('click',e=>{const el=e.target.closest('#tab-draft [data-score-hero]');if(el){e.stopPropagation();showScore(el)}else hideScore()},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hideScore();else if(e.target.matches('#tab-draft [data-score-hero]')&&['Enter',' '].includes(e.key)){e.preventDefault();showScore(e.target)}});
+window.addEventListener('scroll',hideScore,true);window.addEventListener('resize',hideScore);
+
+
+let strategySize=0, strategyLane="", strategyResults=[], strategyRequest=0;
+async function drawStrategies(){
+ $('#strategyFilters').innerHTML=[[0,'All'],[1,'Solo'],[2,'Duo'],[3,'Trio'],[5,'5-Man']].map(([n,l])=>`<button class="chipbtn ${strategySize===n?'on':''}" data-strategy-size="${n}">${l}</button>`).join('');
+ $('#strategyLanes').innerHTML=['','EXP','Jungle','Mid','Gold','Roam'].map(l=>`<button class="chipbtn ${strategyLane===l?'on':''}" data-strategy-lane="${l}" aria-pressed="${strategyLane===l}">${l||'All lanes'}</button>`).join('');
+ const request=++strategyRequest;
+ strategyResults=[];
+ $('#strategyOut').innerHTML='<p class="muted">Generating recommendations in Prolog…</p>';
+ try {
+ const results=await api('strategies',{size:strategySize,lane:strategyLane.toLowerCase()||'all'});
+ if(request!==strategyRequest)return;
+ strategyResults=results;
+ $('#strategyOut').innerHTML=results.map((r,i)=>`<article class="card strategy-card"><span class="muted">${({1:'Solo',2:'Duo',3:'Trio',5:'5-Man'})[r.size]} · Prolog score ${esc(r.score)}</span><h2>${esc(r.size===1?T(r.picks[0].id)+' — '+T(r.picks[0].lane):r.name)}</h2><div class="tiles">${r.picks.map(p=>`<div class="tile" data-hero="${esc(p.id)}">${av(p.id,48)}<b>${esc(BYID[p.id]?.name||T(p.id))}</b><small>${esc(T(p.lane))}${strategyLane.toLowerCase()===p.lane?' · Your lane':''}</small>${BYID[p.id]?tierPill(BYID[p.id].tier):''}</div>`).join('')}</div><p><b>Execution:</b> ${esc(r.execution)}</p><p><b>Strengths:</b> ${esc(r.strength)}</p><p><b>Watch out for:</b> ${esc(r.weakness)}</p><p><b>Recorded synergies:</b> ${esc(r.synergies.map(pair=>pair.map(T).join(' + ')).join(', ')||'None recorded')}</p>${r.picks.map(p=>`<p><b>${esc(T(p.id))}:</b> ${esc(p.strengths.map(T).join(', '))} · Weaknesses: ${esc(p.weaknesses.map(T).join(', '))}</p>`).join('')}<button class="ghost" data-strategy-draft="${i}">Use in Draft Board</button></article>`).join('')||'<p class="muted">No matching recommendations in the knowledge base.</p>';
+ fillAvatars();
+ } catch(e){if(request===strategyRequest)$('#strategyOut').innerHTML=`<p class="muted">Strategy API unavailable: ${esc(e.message)}. Restart the updated Prolog server.</p>`;}
+}
+$('#tab-strategies').addEventListener('click',e=>{const lane=e.target.closest('[data-strategy-lane]');if(lane){strategyLane=lane.dataset.strategyLane;drawStrategies();return}const f=e.target.closest('[data-strategy-size]');if(f){strategySize=Number(f.dataset.strategySize);drawStrategies();return}const b=e.target.closest('[data-strategy-draft]');if(b&&dMine){dMine.set(strategyResults[Number(b.dataset.strategyDraft)].picks.map(p=>p.id));go('draft');}});
 
 /* ---------- global events ---------- */
 document.addEventListener('click',e=>{
@@ -658,6 +804,7 @@ $('#nav').addEventListener('click',e=>{
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('main > section').forEach(s=>s.classList.toggle('on',s.id==='tab-'+b.dataset.tab));
   if(b.dataset.tab==='meta')loadMeta();
+  if(b.dataset.tab==='strategies')drawStrategies();
 });
 $('#counterEnemyDraft').addEventListener('click',async()=>{
   if(!dEnemy.ids.length){$('#draftOut').innerHTML='<p class="muted">Add at least one enemy hero first.</p>';return;}
@@ -686,10 +833,10 @@ $('#copyEnemy').addEventListener('click',()=>benemy.set(enemy.ids));
   $('#hl').innerHTML=HEROES.map(h=>`<option value="${esc(h.name)}">`).join('');
   api('meta').then(m=>{META=m;$('#season').textContent=m.label}).catch(()=>{$('#season').textContent='Current season'});
   enemy=picker($('#pEnemy'),5,'ml.enemy',runCounter);
-  mine=picker($('#pMine'),1,'ml.mine',()=>runBuild(),true);
-  benemy=picker($('#pBEnemy'),5,'ml.benemy',()=>runBuild(),true);
-  dMine=picker($('#dMine'),5,'ml.dmine',()=>runDraft(),true);
-  dEnemy=picker($('#dEnemy'),5,'ml.denemy',()=>runDraft(),true);
+  mine=picker($('#pMine'),1,'ml.mine',()=>runBuild());
+  benemy=picker($('#pBEnemy'),5,'ml.benemy',()=>runBuild());
+  dMine=picker($('#dMine'),5,'ml.dmine',()=>runDraft());
+  dEnemy=picker($('#dEnemy'),5,'ml.denemy',()=>runDraft());
   drawHeroes(); runDraft(); runBuild();
   loadImages();
 })();

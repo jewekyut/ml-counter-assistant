@@ -111,3 +111,11 @@ test(draft_covers_roles, [nondet]) :-
     get_dict(roles, D, Roles), length(Roles, 5).
 
 :- end_tests(data_and_api).
+
+:- use_module('../src/prolog/strategies').
+:- begin_tests(strategy_reasoning).
+test(solo_roam) :- recommend_strategies(1,roam,Ds), Ds\=[], forall(member(D,Ds),(D.picks=[P],P.lane==roam,hero_lane(P.id,roam))).
+test(duo_synergy) :- recommend_strategies(2,all,Ds), Ds\=[], forall(member(D,Ds),D.synergies\=[]).
+test(five_unique_lanes) :- recommend_strategies(5,all,Ds), Ds\=[], forall(member(D,Ds),(findall(L,(member(P,D.picks),L=P.lane),Ls),sort(Ls,[exp,gold,jungle,mid,roam]))).
+test(invalid_lane,[fail]) :- recommend_strategies(1,invalid,_).
+:- end_tests(strategy_reasoning).

@@ -25,6 +25,7 @@
 :- http_handler(root(api/build),  api_build,   []).
 :- http_handler(root(api/draft),  api_draft,   []).
 :- http_handler(root(api/meta),   api_meta,    []).
+:- http_handler(root(api/strategies), api_strategies, []).
 :- http_handler(root(api/items),  api_items,   []).
 :- http_handler(root(img),        serve_img,   [prefix]).
 
@@ -109,3 +110,7 @@ img_mime(png,  'image/png').
 img_mime(jpg,  'image/jpeg').
 img_mime(jpeg, 'image/jpeg').
 img_mime(webp, 'image/webp').
+
+api_strategies(Request) :-
+    http_parameters(Request, [size(N,[integer,default(0)]), lane(L,[atom,default(all)])]),
+    (strategies_json(N,L,Ds) -> reply_json_dict(Ds); bad("Invalid party size or lane")).
