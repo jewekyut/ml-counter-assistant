@@ -14,6 +14,8 @@
 :- use_module(library(readutil)).
 
 :- use_module(api).
+:- use_module(team_draft, [recommend_draft/5]).
+:- use_module(winrates, [winrates_json/1, predict_json/3]).
 
 :- dynamic app_dir/1, server_port/1.
 :- prolog_load_context(directory, D), assertz(app_dir(D)).
@@ -23,9 +25,13 @@
 :- http_handler(root(api/hero),   api_hero,    []).
 :- http_handler(root(api/team),   api_team,    []).
 :- http_handler(root(api/build),  api_build,   []).
+:- http_handler(root(api/counter_draft), api_counter_draft, []).
 :- http_handler(root(api/draft),  api_draft,   []).
 :- http_handler(root(api/meta),   api_meta,    []).
+:- http_handler(root(api/strategies), api_strategies, []).
 :- http_handler(root(api/items),  api_items,   []).
+:- http_handler(root(api/winrates), api_winrates, []).
+:- http_handler(root(api/predict),  api_predict,  []).
 :- http_handler(root(img),        serve_img,   [prefix]).
 
 % ---------------------------------------------------------------- server ---
@@ -84,6 +90,18 @@ api_meta(_) :-
 api_items(_) :-
     items_json(Ds), reply_json_dict(Ds).
 
+%% GET /api/winrates  -> all hero stats (+ meta, league average)
+api_winrates(_) :-
+    winrates_json(D), reply_json_dict(D).
+
+%% GET /api/predict?mine=a,b,c&enemies=d,e  -> predicted win chance of `mine`
+api_predict(Request) :-
+    http_parameters(Request, [mine(M, [atom, default('')]),
+                              enemies(E, [atom, default('')])]),
+    parse_ids(M, Mine), parse_ids(E, En),
+    (   predict_json(Mine, En, D) -> reply_json_dict(D)
+    ;   bad("Pick 1 to 5 valid heroes for your team") ).
+
 %% Local images: src/frontend/img/{hero,thumb,item}/<id>.(png|jpg)
 serve_img(Request) :-
     memberchk(path_info(P0), Request),
@@ -109,3 +127,12 @@ img_mime(png,  'image/png').
 img_mime(jpg,  'image/jpeg').
 img_mime(jpeg, 'image/jpeg').
 img_mime(webp, 'image/webp').
+
+api_strategies(Request) :-
+    http_parameters(Request, [size(N,[integer,default(0)]), lane(L,[atom,default(all)])]),
+    (strategies_json(N,L,Ds) -> reply_json_dict(Ds); bad("Invalid party size or lane")).
+
+api_counter_draft(Request) :-
+    http_parameters(Request,[size(N,[integer,default(5)]),lane(L,[atom,default(all)]),locked(M,[atom,default('')]),enemies(E,[atom])]),
+    parse_ids(M,Locked),parse_ids(E,Enemies),
+    (once(recommend_draft(N,L,Locked,Enemies,D))->reply_json_dict(D);bad("No valid composition: check party size, duplicate heroes and lane eligibility")).

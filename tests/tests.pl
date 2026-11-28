@@ -111,3 +111,19 @@ test(draft_covers_roles, [nondet]) :-
     get_dict(roles, D, Roles), length(Roles, 5).
 
 :- end_tests(data_and_api).
+
+:- use_module('../src/prolog/strategies').
+:- begin_tests(strategy_reasoning).
+test(solo_roam) :- recommend_strategies(1,roam,Ds), Ds\=[], forall(member(D,Ds),(D.picks=[P],P.lane==roam,hero_lane(P.id,roam))).
+test(duo_synergy) :- recommend_strategies(2,all,Ds), Ds\=[], forall(member(D,Ds),D.synergies\=[]).
+test(five_unique_lanes) :- recommend_strategies(5,all,Ds), Ds\=[], forall(member(D,Ds),(findall(L,(member(P,D.picks),L=P.lane),Ls),sort(Ls,[exp,gold,jungle,mid,roam]))).
+test(invalid_lane,[fail]) :- recommend_strategies(1,invalid,_).
+:- end_tests(strategy_reasoning).
+
+:- use_module('../src/prolog/team_draft').
+:- begin_tests(smart_draft).
+test(solo_lane) :- once(recommend_draft(1,gold,[],[fanny],D)),D.picks=[P],P.lane==gold,P.id\==fanny.
+test(trio_locked) :- once(recommend_draft(3,all,[tigreal],[fanny,atlas],D)),length(D.picks,3),member(P,D.picks),P.id==tigreal.
+test(full_lanes) :- once(recommend_draft(5,all,[],[fanny,atlas],D)),findall(L,(member(P,D.picks),L=P.lane),Ls),sort(Ls,[exp,gold,jungle,mid,roam]),findall(H,(member(P,D.picks),H=P.id),Hs),sort(Hs,U),length(U,5),\+memberchk(fanny,Hs),\+memberchk(atlas,Hs).
+test(overlap,[fail]) :- recommend_draft(2,all,[fanny],[fanny],_).
+:- end_tests(smart_draft).
