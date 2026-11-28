@@ -309,6 +309,10 @@ button{min-height:36px}
 #tab-draft .sc[data-score-hero]{cursor:help;z-index:2}
 #scoreTip{position:fixed;z-index:9999;max-width:min(320px,90vw);padding:10px 12px;background:var(--card);color:var(--text);border:1px solid var(--accent);box-shadow:0 6px 24px #0005;font-size:13px;pointer-events:none;white-space:normal}
 #scoreTip[hidden]{display:none}
+#scoreTip{width:min(340px,calc(100vw - 16px));max-height:calc(100vh - 16px);overflow:auto;pointer-events:auto;border-radius:12px!important}
+.score-head,.score-match{display:flex;align-items:center;gap:9px}.score-head{padding-bottom:9px;border-bottom:1px solid var(--line)}
+.score-head .score-value{margin-left:auto;color:var(--ok);font-weight:700;white-space:nowrap}.score-label{font-size:12px;font-weight:700;color:var(--muted);margin:9px 0 4px}.score-match{padding:5px 0;border-bottom:1px solid var(--line)}.score-match:last-child{border:0}.score-match small{display:block;color:var(--muted);font-size:11px}.score-note{margin-top:9px;font-size:11px}
+
 
 #tab-strategies .strategy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:12px}
 #tab-strategies .strategy-card{margin:0;border-left:4px solid var(--accent)}
@@ -323,6 +327,8 @@ button{min-height:36px}
 .match-head strong{display:block;font-size:28px;font-weight:650}.match-mine{color:#4ade80}.match-enemy{color:#ff7777;text-align:right}.match-center{text-align:center;color:#bbb;font-size:12px;font-weight:600}
 .match-bar{display:flex;height:10px;gap:4px;margin:14px 0;border-radius:8px;overflow:hidden;background:#383838}.match-bar span{border-radius:8px}.match-row{margin:10px 0}.match-slot{display:flex;align-items:center;gap:10px;min-height:60px;padding:7px 10px;border-radius:10px;background:#203027;min-width:0}.match-slot.enemy{background:#352526;flex-direction:row-reverse;text-align:right}.match-slot .av{flex-shrink:0}.match-slot small{display:block;color:#c1c1c1;font-size:12px;overflow-wrap:anywhere}.match-slot b{overflow-wrap:anywhere}.match-slot.empty{opacity:.65}.match-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;border-top:1px solid #444;margin-top:20px;padding-top:12px}.match-actions button{min-height:48px;border-radius:9px}.match-note{color:#bcbcbc;font-size:12px;margin:10px 0 0}.match-slot[data-hero]{cursor:pointer}
 @media(max-width:550px){.match-board{padding:10px}.match-head,.match-row{grid-template-columns:minmax(0,1fr) 45px minmax(0,1fr);gap:5px}.match-slot{padding:5px;gap:5px;font-size:12px}.match-slot .av{--s:30px!important}.match-center{font-size:10px}.match-actions button{font-size:12px}}
+
+.match-slot{cursor:pointer;outline-offset:2px}.match-slot[draggable=true]{cursor:grab}.match-slot.selected{outline:2px solid #60a5fa}.match-slot.fit{outline:2px dashed #4ade80}.match-slot.unfit{outline:2px dashed #fbbf24}.match-slot.over{box-shadow:inset 0 0 0 3px #60a5fa}.match-slot .lane-warning{color:#fbbf24}.match-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}.match-tools button{color:#eee;background:#303030;border:1px solid #666}.match-slot:focus-visible{outline:2px solid #93c5fd}
 </style>
 </head>
 <body>
@@ -369,7 +375,7 @@ button{min-height:36px}
 
       </div>
     </div>
-    <div class="card match-board"><div id="matchContent" aria-live="polite"></div><div class="match-actions"><button class="draft-action draft-action-red" id="counterMyDraft" type="button">Counter My Draft</button><button class="draft-action draft-action-green" id="counterEnemyDraft" type="button">Counter Enemy Draft</button></div><p class="match-note" id="matchNote"></p></div>
+    <div class="card match-board"><div id="matchContent" aria-live="polite"></div><div class="match-tools"><button class="ghost" id="resetMatchLanes" type="button">Reset lanes</button><span class="match-note">Drag heroes or select a hero then a destination on the same team. Green = suitable; amber = off-lane.</span></div><div id="laneMessage" class="match-note" role="status"></div><div class="match-actions"><button class="draft-action draft-action-red" id="counterMyDraft" type="button">Counter My Draft</button><button class="draft-action draft-action-green" id="counterEnemyDraft" type="button">Counter Enemy Draft</button></div><p class="match-note" id="matchNote"></p></div>
     <div id="draftOut"></div>
     <div id="reverseDraftOut"></div>
   </section>
@@ -650,7 +656,25 @@ let dMine,dEnemy;
 const matchLanes=['exp','jungle','mid','gold','roam'];
 // Display-only lane matching: maximize eligible assignments, prefer recorded draft lanes.
 const draftLaneHints=new WeakMap();
+const manualLanes=new WeakMap();
+let laneSelected=null, laneDrag=null, lastMatch=null, lastMatchStatus='';
+function laneTeam(side){return side==='enemy'?dEnemy:dMine;}
+function laneLayout(team){const m=matchSlots(team);return [...matchLanes.map((_,i)=>m.slots[i]||null),...m.extra];}
+function laneFit(id,index){return !id||index>=5||(BYID[id]?.lanes||[]).includes(matchLanes[index]);}
+function moveLane(from,to){
+ if(!from||from.side!==to.side||from.index===to.index)return;
+ const team=laneTeam(from.side), a=laneLayout(team);
+ if(a[from.index]!==from.id)return;
+ const other=a[to.index]||null; a[to.index]=from.id; a[from.index]=other;
+ manualLanes.set(team,{key:team.ids.join(','),slots:a});
+ laneSelected=null; laneDrag=null; renderMatch(lastMatch,lastMatchStatus);
+ $('#laneMessage').textContent=(!laneFit(from.id,to.index)||!laneFit(other,from.index))?'Warning: a hero is assigned outside its recorded lanes.':'Lane assignment updated.';
+}
+function laneTarget(el){return {side:el.dataset.side,index:Number(el.dataset.index),id:el.dataset.pickId||null};}
+function paintLaneTargets(){const from=laneDrag||laneSelected;document.querySelectorAll('#matchContent .match-slot').forEach(el=>{const t=laneTarget(el);el.classList.toggle('selected',!!from&&from.side===t.side&&from.index===t.index);el.classList.toggle('fit',!!from&&from.side===t.side&&from.index!==t.index&&laneFit(from.id,t.index)&&laneFit(t.id,from.index));el.classList.toggle('unfit',!!from&&from.side===t.side&&from.index!==t.index&&(!laneFit(from.id,t.index)||!laneFit(t.id,from.index)));});}
+
 function matchSlots(team){
+ const manual=manualLanes.get(team);if(manual&&manual.key===team.ids.join(',')){return {slots:manual.slots.slice(0,5),extra:manual.slots.slice(5)};}if(manual)manualLanes.delete(team);
  const hints=draftLaneHints.get(team)||{}, ids=team.ids; let best=[], score=-1;
  function visit(i,used,slots,total){if(i===ids.length){if(total>score){score=total;best=slots.slice()}return;}
  const id=ids[i], lanes=BYID[id]?.lanes||[];
@@ -659,15 +683,18 @@ function matchSlots(team){
  }visit(0,new Set(),[],0);return {slots:best,extra:ids.filter(id=>!best.includes(id))};
 }
 function renderMatch(p, status=''){
+ lastMatch=p;lastMatchStatus=status;
  const m=matchSlots(dMine),e=matchSlots(dEnemy), valid=p&&Number.isFinite(p.your_winrate)&&Number.isFinite(p.enemy_winrate)&&dMine.ids.length&&dEnemy.ids.length;
  const y=valid?Math.max(0,Math.min(100,p.your_winrate)):0, z=valid?Math.max(0,Math.min(100,p.enemy_winrate)):0;
- const slot=(id,enemy)=>{const h=BYID[id];return `<div class="match-slot ${enemy?'enemy':''} ${h?'':'empty'}" ${h?`data-hero="${esc(id)}"`:''}>${h?av(id,46):'<span aria-hidden="true">＋</span>'}<div>${h?`<b>${esc(h.name)}</b><small>${esc((h.specialty?.length?h.specialty:h.roles||[]).map(T).join(' · '))}</small>`:'<small>Empty slot</small>'}</div></div>`};
- $('#matchContent').innerHTML=`<div class="match-head"><div class="match-mine">MY TEAM<strong>${valid?p.your_winrate.toFixed(1)+'%':'—'}</strong></div><div class="match-center">VS</div><div class="match-enemy">ENEMY TEAM<strong>${valid?p.enemy_winrate.toFixed(1)+'%':'—'}</strong></div></div><div class="match-bar">${valid?`<span style="flex:${y};background:#16a34a"></span><span style="flex:${z};background:#dc2626"></span>`:''}</div>${matchLanes.map((lane,i)=>`<div class="match-row">${slot(m.slots[i],false)}<div class="match-center">${lane.toUpperCase()}</div>${slot(e.slots[i],true)}</div>`).join('')}${Array.from({length:Math.max(m.extra.length,e.extra.length)},(_,i)=>`<div class="match-row">${slot(m.extra[i],false)}<div class="match-center">FLEX</div>${slot(e.extra[i],true)}</div>`).join('')}`;
- $('#matchNote').textContent=(status|| (valid?'Estimated win chance from the existing prediction API.':'Select heroes on both sides to compare win chances.'))+' · Lane placement is illustrative for manual picks.';
+ const slot=(id,enemy,index)=>{const h=BYID[id];return `<div class="match-slot ${enemy?'enemy':''} ${h?'':'empty'}" role="button" tabindex="0" data-side="${enemy?'enemy':'mine'}" data-index="${index}" data-pick-id="${h?esc(id):''}" draggable="${!!h}" aria-label="${esc((h?h.name:'Empty slot')+' — '+(matchLanes[index]||'FLEX'))}">${h?av(id,46).replace('<img','<img draggable="false"'):'<span aria-hidden="true">＋</span>'}<div>${h?`<b>${esc(h.name)}</b><small>${esc((h.specialty?.length?h.specialty:h.roles||[]).map(T).join(' · '))}</small>${laneFit(id,index)?'':'<small class="lane-warning">⚠ Off-lane</small>'}`:'<small>Empty slot</small>'}</div></div>`};
+ $('#matchContent').innerHTML=`<div class="match-head"><div class="match-mine">MY TEAM<strong>${valid?p.your_winrate.toFixed(1)+'%':'—'}</strong></div><div class="match-center">VS</div><div class="match-enemy">ENEMY TEAM<strong>${valid?p.enemy_winrate.toFixed(1)+'%':'—'}</strong></div></div><div class="match-bar">${valid?`<span style="flex:${y};background:#16a34a"></span><span style="flex:${z};background:#dc2626"></span>`:''}</div>${matchLanes.map((lane,i)=>`<div class="match-row">${slot(m.slots[i],false,i)}<div class="match-center">${lane.toUpperCase()}</div>${slot(e.slots[i],true,i)}</div>`).join('')}${Array.from({length:Math.max(1,m.extra.length,e.extra.length)},(_,i)=>`<div class="match-row">${slot(m.extra[i],false,i+5)}<div class="match-center">FLEX</div>${slot(e.extra[i],true,i+5)}</div>`).join('')}`;
+ $('#matchNote').textContent=(status|| (valid?'Estimated win chance from the existing prediction API.':'Select heroes on both sides to compare win chances.'))+' · Manual lane placement does not change the predicted win rate.';
+ paintLaneTargets();
 }
 let draftRequest=0;
 async function runDraft(){
   const out=$('#draftOut'); if(!dMine||!dEnemy)return;
+  laneSelected=null;laneDrag=null;$('#laneMessage').textContent='';
   const request=++draftRequest; renderMatch(null,'Updating matchup…');
   out.innerHTML='<p class="muted">Thinking…</p>';
   try{
@@ -701,6 +728,7 @@ async function smartCounter(reverse){
   try{
     const d=await api('counter_draft',{size,lane,locked:locked.join(','),enemies:enemies.join(',')});
     if(source.ids.join(',')!==enemies.join(',')||target.ids.join(',')!==snapshot||Number($('#draftSize').value)!==size||$('#draftLane').value!==lane){out.textContent='Draft changed. Generate again.';return;}
+    manualLanes.delete(target);laneSelected=null;laneDrag=null;
     draftLaneHints.set(target,Object.fromEntries(d.picks.map(p=>[p.id,p.lane])));
     target.set(d.picks.map(p=>p.id));
     const names=ids=>ids.map(id=>esc(BYID[id]?.name||T(id))).join(', ');
@@ -774,24 +802,26 @@ scoreTip.id='scoreTip';scoreTip.hidden=true;scoreTip.setAttribute('role','toolti
 const scoreCache=new Map();let activeScore=null;
 function positionScore(){if(!activeScore)return;const r=activeScore.getBoundingClientRect();scoreTip.style.left=Math.max(8,Math.min(r.left,innerWidth-scoreTip.offsetWidth-8))+'px';scoreTip.style.top=(r.bottom+8+scoreTip.offsetHeight<=innerHeight?r.bottom+8:Math.max(8,r.top-scoreTip.offsetHeight-8))+'px';}
 async function showScore(el){
- activeScore=el;scoreTip.hidden=false;scoreTip.textContent='Loading counters…';positionScore();
+ clearTimeout(scoreHideTimer);activeScore=el;scoreTip.hidden=false;scoreTip.textContent='Loading counters…';positionScore();
  const id=el.dataset.scoreHero;
  try{
   if(!scoreCache.has(id))scoreCache.set(id,api('hero',{id}).catch(e=>{scoreCache.delete(id);throw e}));
   const h=await scoreCache.get(id);if(activeScore!==el||!el.isConnected)return;
   const all=h.strongAgainst||[], enemies=new Set(dEnemy?.ids||[]), matches=all.filter(c=>enemies.has(c.id));
-  const names=l=>l.map(c=>esc(c.name||BYID[c.id]?.name||c.id)).join(', ');
-  scoreTip.innerHTML=`<b>${esc(h.name)} — strong against</b>${enemies.size?`<div><b>Current enemy draft:</b> ${matches.length?names(matches):'No recorded matchups'}</div>`:''}<div><b>All recorded counters:</b> ${all.length?names(all):'None recorded'}</div><div class="muted">Draft score also includes team fit and meta.</div>`;positionScore();
+  const cards=l=>l.length?l.map(c=>`<div class="score-match">${av(c.id,36)}<div><b>${esc(c.name||BYID[c.id]?.name||c.id)}</b><small>${esc((BYID[c.id]?.roles||[]).map(T).join(' · '))}${c.type?' · '+esc(T(c.type)):''}</small></div></div>`).join(''):'<div class="muted">None recorded</div>';
+  scoreTip.innerHTML=`<div class="score-head">${av(id,44)}<div><b>${esc(h.name)}</b><div class="muted">Counter information</div></div><span class="score-value">Score: ${esc(el.textContent.trim())}</span></div>${enemies.size?`<div class="score-label">Current enemy draft</div>${cards(matches)}`:''}<div class="score-label">All recorded counters</div>${cards(all)}<div class="muted score-note">Draft score also includes team fit and meta.</div>`;fillAvatars();positionScore();
  }catch(e){if(activeScore===el){scoreTip.textContent='Counter information unavailable.';positionScore();}}
 }
-function hideScore(){activeScore=null;scoreTip.hidden=true;}
-document.addEventListener('pointerover',e=>{const el=e.target.closest('#tab-draft [data-score-hero]');if(el&&el!==activeScore)showScore(el)});
-document.addEventListener('pointerout',e=>{if(activeScore&&e.target===activeScore&&!activeScore.contains(e.relatedTarget))hideScore()});
+let scoreHideTimer;function hideScore(){clearTimeout(scoreHideTimer);activeScore=null;scoreTip.hidden=true;}
+function delayScoreHide(){clearTimeout(scoreHideTimer);scoreHideTimer=setTimeout(hideScore,250)}
+scoreTip.addEventListener("pointerenter",()=>clearTimeout(scoreHideTimer));scoreTip.addEventListener("pointerleave",delayScoreHide);
+document.addEventListener('pointerover',e=>{const el=e.target.closest('#tab-draft [data-score-hero]');if(el){clearTimeout(scoreHideTimer);if(el!==activeScore)showScore(el)}});
+document.addEventListener('pointerout',e=>{if(activeScore&&e.target===activeScore&&!activeScore.contains(e.relatedTarget))delayScoreHide()});
 document.addEventListener('focusin',e=>{if(e.target.matches('#tab-draft [data-score-hero]'))showScore(e.target)});
 document.addEventListener('focusout',e=>{if(e.target===activeScore)hideScore()});
-document.addEventListener('click',e=>{const el=e.target.closest('#tab-draft [data-score-hero]');if(el){e.stopPropagation();showScore(el)}else hideScore()},true);
+document.addEventListener('click',e=>{const el=e.target.closest('#tab-draft [data-score-hero]');if(el){e.stopPropagation();showScore(el)}else if(!scoreTip.contains(e.target))hideScore()},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')hideScore();else if(e.target.matches('#tab-draft [data-score-hero]')&&['Enter',' '].includes(e.key)){e.preventDefault();showScore(e.target)}});
-window.addEventListener('scroll',hideScore,true);window.addEventListener('resize',hideScore);
+window.addEventListener('scroll',e=>{if(!scoreTip.contains(e.target))hideScore()},true);window.addEventListener('resize',hideScore);
 
 
 let strategySize=0, strategyLane="", strategyResults=[], strategyRequest=0;
@@ -840,6 +870,16 @@ $('#nav').addEventListener('click',e=>{
   if(b.dataset.tab==='meta')loadMeta();
   if(b.dataset.tab==='strategies')drawStrategies();
 });
+const matchRoot=$('#matchContent');
+function chooseLane(el){const t=laneTarget(el);if(laneSelected&&laneSelected.side===t.side){if(laneSelected.index===t.index){laneSelected=null;paintLaneTargets();}else moveLane(laneSelected,t);}else{laneSelected=t.id?t:null;paintLaneTargets();}}
+matchRoot.addEventListener('click',e=>{const el=e.target.closest('.match-slot');if(el)chooseLane(el);});
+matchRoot.addEventListener('keydown',e=>{const el=e.target.closest('.match-slot');if(el&&(e.key==='Enter'||e.key===' ')){e.preventDefault();chooseLane(el);}else if(e.key==='Escape'){laneSelected=null;paintLaneTargets();}});
+matchRoot.addEventListener('dragstart',e=>{const el=e.target.closest('.match-slot');if(!el||!el.dataset.pickId){e.preventDefault();return;}laneDrag=laneTarget(el);laneSelected=null;e.dataTransfer.setData('text/plain',laneDrag.id);e.dataTransfer.effectAllowed='move';paintLaneTargets();});
+matchRoot.addEventListener('dragover',e=>{const el=e.target.closest('.match-slot');if(el&&laneDrag&&el.dataset.side===laneDrag.side){e.preventDefault();e.dataTransfer.dropEffect='move';el.classList.add('over');}});
+matchRoot.addEventListener('dragleave',e=>{e.target.closest('.match-slot')?.classList.remove('over');});
+matchRoot.addEventListener('drop',e=>{const el=e.target.closest('.match-slot');if(el&&laneDrag){e.preventDefault();moveLane(laneDrag,laneTarget(el));}laneDrag=null;paintLaneTargets();});
+matchRoot.addEventListener('dragend',()=>{laneDrag=null;matchRoot.querySelectorAll('.over').forEach(el=>el.classList.remove('over'));paintLaneTargets();});
+$('#resetMatchLanes').addEventListener('click',()=>{manualLanes.delete(dMine);manualLanes.delete(dEnemy);laneSelected=null;laneDrag=null;renderMatch(lastMatch,lastMatchStatus);$('#laneMessage').textContent='Automatic lane assignments restored.';});
 $('#counterEnemyDraft').addEventListener('click',()=>smartCounter(false));
 $('#counterMyDraft').addEventListener('click',runCounterMyDraft);
 $('#copyEnemy').addEventListener('click',()=>benemy.set(enemy.ids));
